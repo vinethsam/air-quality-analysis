@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Air Quality - Sri Lanka & Asia</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0e1a;
+    --surface:   #111827;
+    --card:      #161d2e;
+    --border:    #1e2d47;
+    --accent:    #00d4ff;
+    --accent2:   #ff6b35;
+    --accent3:   #7c3aed;
+    --good:      #22c55e;
+    --moderate:  #eab308;
+    --sensitive: #f97316;
+    --unhealthy: #ef4444;
+    --vunhealthy:#a855f7;
+    --hazardous: #7f1d1d;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --mono:      'Space Mono', monospace;
+    --sans:      'DM Sans', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Noise texture overlay ── */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative;
+    padding: 56px 48px 40px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, #0a0e1a 0%, #111827 100%);
+    overflow: hidden;
+  }
+  header::after {
+    content:'';
+    position:absolute; top:-80px; right:-80px;
+    width:400px; height:400px;
+    background: radial-gradient(circle, rgba(0,212,255,0.08) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .header-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    opacity: 0.8;
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: clamp(24px, 4vw, 42px);
+    font-weight: 700;
+    line-height: 1.1;
+    color: #fff;
+    margin-bottom: 12px;
+  }
+  header h1 span { color: var(--accent); }
+  header p {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 560px;
+    line-height: 1.6;
+  }
+  .author-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+  .author-badge a { color: var(--accent); text-decoration:none; }
+  .author-badge a:hover { text-decoration:underline; }
+
+  /* ── Nav tabs ── */
+  nav {
+    display: flex;
+    gap: 2px;
+    padding: 0 48px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  nav button {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 16px 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  nav button:hover { color: var(--text); }
+  nav button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── Main content ── */
+  main { padding: 40px 48px; max-width: 1400px; }
+
+  .tab-panel { display:none; animation: fadeIn 0.3s ease; }
+  .tab-panel.active { display:block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  /* ── KPI row ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: var(--accent); }
+  .kpi-card::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+  }
+  .kpi-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+  }
+  .kpi-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* ── Section titles ── */
+  .section-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content:'';
+    flex:1;
+    height:1px;
+    background: var(--border);
+  }
+
+  /* ── Chart cards ── */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .chart-card:hover {
+    border-color: var(--border);
+    transform: translateY(-2px);
+  }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .chart-wrap { position:relative; }
+
+  /* ── Map ── */
+  #map-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 32px;
+    position: relative;
+  }
+  #map-svg {
+    width: 100%;
+    height: 480px;
+    cursor: crosshair;
+  }
+  .map-tooltip {
+    position: absolute;
+    background: rgba(10,14,26,0.95);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 13px;
+    pointer-events: none;
+    display: none;
+    min-width: 200px;
+    backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+  .map-tooltip .tt-city {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .map-tooltip .tt-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 3px 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .map-tooltip .tt-row span:last-child { color: var(--text); font-weight:500; }
+
+  /* ── AQI badge ── */
+  .aqi-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 100px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 6px;
+  }
+
+  /* ── City selector ── */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 28px;
+    align-items: center;
+  }
+  .controls label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  select:focus, select:hover { border-color: var(--accent); }
+
+  /* ── City ranking table ── */
+  .rank-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .rank-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .rank-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(30,45,71,0.5);
+  }
+  .rank-table tr:last-child td { border-bottom: none; }
+  .rank-table tr:hover td { background: rgba(0,212,255,0.03); }
+  .rank-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    width: 32px;
+  }
+  .rank-aqi {
+    font-family: var(--mono);
+    font-weight: 700;
+  }
+
+  /* ── AQI legend ── */
+  .aqi-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Model section ── */
+  .model-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .model-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .model-card h3 {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-row .m-label { color: var(--muted); font-size: 12px; }
+  .metric-row .m-val {
+    font-family: var(--mono);
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* ── Predictor ── */
+  .predictor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  @media(max-width:768px){
+    .predictor-grid { grid-template-columns:1fr; }
+    .chart-grid { grid-template-columns:1fr; }
+    main { padding: 24px 20px; }
+    nav { padding: 0 20px; }
+    header { padding: 36px 20px 28px; }
+  }
+  .input-group {
+    margin-bottom: 18px;
+  }
+  .input-group label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .slider-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    min-width: 40px;
+    text-align: right;
+  }
+  .predict-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .predict-btn:hover { opacity: 0.9; transform: scale(0.99); }
+  .result-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    text-align: center;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .result-aqi-num {
+    font-family: var(--mono);
+    font-size: 72px;
+    font-weight: 700;
+    line-height: 1;
+    transition: color 0.4s;
+  }
+  .result-category {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .result-advice {
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 300px;
+    line-height: 1.6;
+    text-align: center;
+  }
+  .gauge-bar {
+    width: 100%;
+    height: 12px;
+    border-radius: 100px;
+    background: linear-gradient(90deg, #22c55e 0%, #eab308 25%, #f97316 45%, #ef4444 60%, #a855f7 80%, #7f1d1d 100%);
+    position: relative;
+    margin: 8px 0;
+    overflow: visible;
+  }
+  .gauge-needle {
+    position: absolute;
+    top: -6px;
+    width: 3px;
+    height: 24px;
+    background: #fff;
+    border-radius: 2px;
+    transform: translateX(-50%);
+    transition: left 0.6s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 0 8px rgba(255,255,255,0.5);
+  }
+
+  /* ── Findings ── */
+  .findings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+  .finding-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .finding-card::before {
+    content:'';
+    position:absolute; top:0; left:0;
+    width:3px; height:100%;
+    background: var(--accent);
+  }
+  .finding-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .finding-card h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+  .finding-card p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .finding-stat {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin: 8px 0 4px;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-tag">Data Science Portfolio</div>
+  <h1>Can We Predict and Explain<br><span>Air Quality in Cities?</span></h1>
+  <p>An interactive analysis of 15 cities across Sri Lanka and Asia, covering 3 years of daily air quality data, factor analysis, and a machine learning model that predicts AQI from weather conditions.</p>
+  <div class="author-badge">
+    by Vineth Samarasinghe &nbsp;|&nbsp;
+    <a href="https://github.com/vinethsam/air-quality-analysis" target="_blank">github.com/vinethsam</a>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('overview')">Overview</button>
+  <button onclick="showTab('map')">Interactive Map</button>
+  <button onclick="showTab('trends')">Trends</button>
+  <button onclick="showTab('factors')">Factors</button>
+  <button onclick="showTab('predictor')">AQI Predictor</button>
+  <button onclick="showTab('model')">Model</button>
+</nav>
+
+<main>
+
+<!-- ================================================================ OVERVIEW -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="section-title">City Rankings</div>
+
+  <div class="aqi-legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Good (0-50)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div>Moderate (51-100)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Sensitive (101-150)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Unhealthy (151-200)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Very Unhealthy (201-300)</div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:32px">
+    <div class="chart-title">Average AQI by City (2021-2023)</div>
+    <div class="chart-wrap"><canvas id="chart-ranking" height="90"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">City Data Summary</div>
+    <div style="overflow-x:auto">
+      <table class="rank-table" id="rank-table"></table>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ MAP -->
+<div id="tab-map" class="tab-panel">
+  <div class="section-title">Pollution Map</div>
+  <p style="color:var(--muted); font-size:13px; margin-bottom:20px">
+    Bubble size and colour indicate average AQI. Hover over any city for detailed statistics.
+  </p>
+  <div id="map-container">
+    <svg id="map-svg" viewBox="0 0 900 480"></svg>
+    <div class="map-tooltip" id="map-tooltip"></div>
+  </div>
+  <div class="aqi-legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Good</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div>Moderate</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>Sensitive Groups</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Unhealthy</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Very Unhealthy</div>
+  </div>
+</div>
+
+<!-- ================================================================ TRENDS -->
+<div id="tab-trends" class="tab-panel">
+  <div class="section-title">Historical Trends</div>
+
+  <div class="controls">
+    <label>City:</label>
+    <select id="trend-city-select" onchange="updateTrendChart()"></select>
+  </div>
+
+  <div class="chart-card full" style="margin-bottom:24px">
+    <div class="chart-title">Monthly Average AQI</div>
+    <div class="chart-wrap"><canvas id="chart-trend" height="55"></canvas></div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">AQI by Season</div>
+      <div class="chart-wrap"><canvas id="chart-season" height="120"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">All Cities - Monthly Overview (2023)</div>
+      <div class="chart-wrap"><canvas id="chart-multi" height="120"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ FACTORS -->
+<div id="tab-factors" class="tab-panel">
+  <div class="section-title">What Drives Air Quality?</div>
+
+  <div class="findings-grid" id="findings-grid"></div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Monsoon Effect on AQI</div>
+      <div class="chart-wrap"><canvas id="chart-monsoon" height="120"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Weekday vs Weekend AQI</div>
+      <div class="chart-wrap"><canvas id="chart-weekend" height="120"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card full">
+    <div class="chart-title">Average AQI by Season and City</div>
+    <div class="chart-wrap"><canvas id="chart-season-city" height="55"></canvas></div>
+  </div>
+</div>
+
+<!-- ================================================================ PREDICTOR -->
+<div id="tab-predictor" class="tab-panel">
+  <div class="section-title">Live AQI Predictor</div>
+  <p style="color:var(--muted); font-size:13px; margin-bottom:28px">
+    Adjust the weather conditions below to get an instant AQI prediction.
+    Uses a linear regression model trained on 3 years of historical data (R2 = 0.94).
+  </p>
+
+  <div class="predictor-grid">
+    <div>
+      <div class="input-group">
+        <label>City</label>
+        <select id="pred-city" style="width:100%"></select>
+      </div>
+
+      <div class="input-group">
+        <label>Temperature (C) - <span id="lbl-temp">28</span></label>
+        <div class="slider-wrap">
+          <input type="range" id="sl-temp" min="-5" max="45" value="28"
+                 oninput="document.getElementById('lbl-temp').textContent=this.value; runPredict()">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Humidity (%) - <span id="lbl-hum">65</span></label>
+        <div class="slider-wrap">
+          <input type="range" id="sl-hum" min="10" max="100" value="65"
+                 oninput="document.getElementById('lbl-hum').textContent=this.value; runPredict()">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Wind Speed (m/s) - <span id="lbl-wind">3</span></label>
+        <div class="slider-wrap">
+          <input type="range" id="sl-wind" min="0" max="20" value="3" step="0.5"
+                 oninput="document.getElementById('lbl-wind').textContent=this.value; runPredict()">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Month - <span id="lbl-month">June</span></label>
+        <div class="slider-wrap">
+          <input type="range" id="sl-month" min="1" max="12" value="6"
+                 oninput="updateMonthLabel(); runPredict()">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Is Monsoon Season?</label>
+        <select id="sl-monsoon" onchange="runPredict()" style="width:100%">
+          <option value="0">No</option>
+          <option value="1">Yes</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>Is Weekend?</label>
+        <select id="sl-weekend" onchange="runPredict()" style="width:100%">
+          <option value="0">No (Weekday)</option>
+          <option value="1">Yes (Weekend)</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <div class="result-box" id="result-box">
+        <div style="color:var(--muted); font-family:var(--mono); font-size:12px">
+          PREDICTED AQI
+        </div>
+        <div class="result-aqi-num" id="result-num" style="color:var(--accent)">--</div>
+        <div class="gauge-bar"><div class="gauge-needle" id="gauge-needle" style="left:0%"></div></div>
+        <div class="result-category" id="result-cat">Adjust sliders to predict</div>
+        <div class="result-advice" id="result-advice"></div>
+      </div>
+
+      <div class="chart-card" style="margin-top:20px">
+        <div class="chart-title">City Baseline AQI Reference</div>
+        <div class="chart-wrap"><canvas id="chart-baseline" height="140"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ MODEL -->
+<div id="tab-model" class="tab-panel">
+  <div class="section-title">Model Performance</div>
+
+  <div class="model-grid">
+    <div class="model-card">
+      <h3>Linear Regression</h3>
+      <div class="metric-row"><span class="m-label">R-squared (R2)</span><span class="m-val">0.936</span></div>
+      <div class="metric-row"><span class="m-label">Mean Absolute Error</span><span class="m-val">5.97</span></div>
+      <div class="metric-row"><span class="m-label">RMSE</span><span class="m-val">11.64</span></div>
+      <div class="metric-row"><span class="m-label">CV R2 (5-fold)</span><span class="m-val">0.940</span></div>
+      <p style="font-size:12px; color:var(--muted); margin-top:14px; line-height:1.6">
+        Surprisingly strong for a linear model. The near-linear relationship between particulate
+        concentrations (PM2.5, PM10) and AQI means linear regression captures most of the variance.
+      </p>
+    </div>
+    <div class="model-card">
+      <h3>Random Forest</h3>
+      <div class="metric-row"><span class="m-label">R-squared (R2)</span><span class="m-val">0.935</span></div>
+      <div class="metric-row"><span class="m-label">Mean Absolute Error</span><span class="m-val">6.05</span></div>
+      <div class="metric-row"><span class="m-label">RMSE</span><span class="m-val">11.78</span></div>
+      <div class="metric-row"><span class="m-label">Estimators</span><span class="m-val">150</span></div>
+      <p style="font-size:12px; color:var(--muted); margin-top:14px; line-height:1.6">
+        Comparable to linear regression here, confirming the data relationships are largely
+        linear. Would outperform more clearly on a larger, noisier real-world dataset.
+      </p>
+    </div>
+    <div class="model-card">
+      <h3>Feature Importance</h3>
+      <div class="metric-row"><span class="m-label">PM2.5</span><span class="m-val">78.2%</span></div>
+      <div class="metric-row"><span class="m-label">PM10</span><span class="m-val">17.2%</span></div>
+      <div class="metric-row"><span class="m-label">NO2</span><span class="m-val">2.1%</span></div>
+      <div class="metric-row"><span class="m-label">O3</span><span class="m-val">1.0%</span></div>
+      <div class="metric-row"><span class="m-label">Weather factors</span><span class="m-val">1.5%</span></div>
+      <p style="font-size:12px; color:var(--muted); margin-top:14px; line-height:1.6">
+        PM2.5 dominates because it is the primary component of AQI by definition.
+        The interesting insight is that weather factors (wind, humidity, temp) together
+        explain only ~1.5% of variance once particulate levels are known.
+      </p>
+    </div>
+  </div>
+
+  <div class="chart-card full">
+    <div class="chart-title">Feature Importance - Random Forest</div>
+    <div class="chart-wrap"><canvas id="chart-fi" height="55"></canvas></div>
+  </div>
+
+  <div class="section-title" style="margin-top:32px">Methodology</div>
+  <div class="findings-grid">
+    <div class="finding-card">
+      <div class="finding-num">DATASET</div>
+      <h3>16,106 daily records across 15 cities</h3>
+      <p>Three years of daily AQI, weather, and pollutant data (2021-2023),
+         with realistic seasonal patterns and monsoon cycles built in. Approximately 2%
+         missing values injected and cleaned as part of the pipeline.</p>
+    </div>
+    <div class="finding-card">
+      <div class="finding-num">CLEANING</div>
+      <h3>319 outliers removed, 1,359 nulls imputed</h3>
+      <p>AQI values above 500 (physically impossible) were removed. Missing values
+         were forward-filled per city, with median fallback. Data types standardised
+         and date parsing validated.</p>
+    </div>
+    <div class="finding-card">
+      <div class="finding-num">FEATURES</div>
+      <h3>8 engineered features added</h3>
+      <p>Including: is_weekend, season (hemisphere-aware), is_monsoon per city,
+         temperature range bucket, wind category, high pollution flag, 7-day rolling
+         average AQI, and humidity category.</p>
+    </div>
+    <div class="finding-card">
+      <div class="finding-num">NEXT STEPS</div>
+      <h3>What I would add with more time</h3>
+      <p>Activate live OpenWeatherMap API integration, add a 7-day AQI forecast using
+         Facebook Prophet, deploy on Streamlit Cloud with a public URL, and incorporate
+         NASA satellite AOD data as a ground truth comparison.</p>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ================================================================
+// DATA (embedded from Python-generated JSON)
+// ================================================================
+const RAW_DATA = {"city_summary": [{"city": "Bangkok", "country": "Thailand", "latitude": 13.8, "longitude": 100.5, "avg_aqi": 75.3, "max_aqi": 458.4, "min_aqi": 15.2, "high_days": 85, "total_days": 1079, "avg_temp": 28.2, "avg_humidity": 67.4, "avg_wind": 3.9}, {"city": "Beijing", "country": "China", "latitude": 39.9, "longitude": 116.4, "avg_aqi": 125.9, "max_aqi": 429.7, "min_aqi": 14.0, "high_days": 850, "total_days": 1069, "avg_temp": 11.9, "avg_humidity": 59.7, "avg_wind": 4.2}, {"city": "Colombo", "country": "Sri Lanka", "latitude": 6.9, "longitude": 79.8, "avg_aqi": 33.8, "max_aqi": 203.7, "min_aqi": 5.0, "high_days": 3, "total_days": 1068, "avg_temp": 28.0, "avg_humidity": 67.5, "avg_wind": 3.9}, {"city": "Delhi", "country": "India", "latitude": 28.6, "longitude": 77.2, "avg_aqi": 136.3, "max_aqi": 213.2, "min_aqi": 36.5, "high_days": 923, "total_days": 1065, "avg_temp": 25.0, "avg_humidity": 63.8, "avg_wind": 3.9}, {"city": "Dhaka", "country": "Bangladesh", "latitude": 23.8, "longitude": 90.4, "avg_aqi": 146.4, "max_aqi": 429.2, "min_aqi": 43.5, "high_days": 980, "total_days": 1072, "avg_temp": 26.0, "avg_humidity": 63.7, "avg_wind": 4.0}, {"city": "Hanoi", "country": "Vietnam", "latitude": 21.0, "longitude": 105.8, "avg_aqi": 89.7, "max_aqi": 403.6, "min_aqi": 24.7, "high_days": 390, "total_days": 1068, "avg_temp": 22.9, "avg_humidity": 65.4, "avg_wind": 4.0}, {"city": "Jakarta", "country": "Indonesia", "latitude": -6.2, "longitude": 106.8, "avg_aqi": 65.2, "max_aqi": 122.9, "min_aqi": 5.0, "high_days": 17, "total_days": 1075, "avg_temp": 28.0, "avg_humidity": 65.2, "avg_wind": 4.0}, {"city": "Kandy", "country": "Sri Lanka", "latitude": 7.3, "longitude": 80.6, "avg_aqi": 20.0, "max_aqi": 219.4, "min_aqi": 5.0, "high_days": 1, "total_days": 1074, "avg_temp": 24.0, "avg_humidity": 67.8, "avg_wind": 4.1}, {"city": "Karachi", "country": "Pakistan", "latitude": 24.9, "longitude": 67.0, "avg_aqi": 116.4, "max_aqi": 195.1, "min_aqi": 37.2, "high_days": 790, "total_days": 1080, "avg_temp": 27.1, "avg_humidity": 59.9, "avg_wind": 3.9}, {"city": "Kathmandu", "country": "Nepal", "latitude": 27.7, "longitude": 85.3, "avg_aqi": 102.2, "max_aqi": 264.1, "min_aqi": 5.0, "high_days": 572, "total_days": 1075, "avg_temp": 18.0, "avg_humidity": 63.1, "avg_wind": 4.1}, {"city": "Kuala Lumpur", "country": "Malaysia", "latitude": 3.1, "longitude": 101.7, "avg_aqi": 42.5, "max_aqi": 81.0, "min_aqi": 5.0, "high_days": 0, "total_days": 1081, "avg_temp": 28.0, "avg_humidity": 63.8, "avg_wind": 4.0}, {"city": "Manila", "country": "Philippines", "latitude": 14.6, "longitude": 121.0, "avg_aqi": 54.8, "max_aqi": 406.5, "min_aqi": 5.0, "high_days": 3, "total_days": 1075, "avg_temp": 27.9, "avg_humidity": 67.3, "avg_wind": 4.0}, {"city": "Mumbai", "country": "India", "latitude": 19.1, "longitude": 72.9, "avg_aqi": 71.8, "max_aqi": 387.7, "min_aqi": 11.7, "high_days": 47, "total_days": 1077, "avg_temp": 28.0, "avg_humidity": 63.7, "avg_wind": 3.8}, {"city": "Shanghai", "country": "China", "latitude": 31.2, "longitude": 121.5, "avg_aqi": 79.5, "max_aqi": 489.0, "min_aqi": 7.9, "high_days": 241, "total_days": 1070, "avg_temp": 15.9, "avg_humidity": 61.5, "avg_wind": 4.1}, {"city": "Singapore", "country": "Singapore", "latitude": 1.4, "longitude": 103.8, "avg_aqi": 28.2, "max_aqi": 159.9, "min_aqi": 5.0, "high_days": 4, "total_days": 1078, "avg_temp": 28.0, "avg_humidity": 62.9, "avg_wind": 4.0}], "monthly_trend": [{"city": "Bangkok", "ym": "2021-01", "avg_aqi": 87.9}, {"city": "Bangkok", "ym": "2021-02", "avg_aqi": 98.8}, {"city": "Bangkok", "ym": "2021-03", "avg_aqi": 84.8}, {"city": "Bangkok", "ym": "2021-04", "avg_aqi": 82.1}, {"city": "Bangkok", "ym": "2021-05", "avg_aqi": 62.3}, {"city": "Bangkok", "ym": "2021-06", "avg_aqi": 64.7}, {"city": "Bangkok", "ym": "2021-07", "avg_aqi": 66.7}, {"city": "Bangkok", "ym": "2021-08", "avg_aqi": 58.1}, {"city": "Bangkok", "ym": "2021-09", "avg_aqi": 58.9}, {"city": "Bangkok", "ym": "2021-10", "avg_aqi": 61.8}, {"city": "Bangkok", "ym": "2021-11", "avg_aqi": 85.0}, {"city": "Bangkok", "ym": "2021-12", "avg_aqi": 87.5}, {"city": "Bangkok", "ym": "2022-01", "avg_aqi": 88.3}, {"city": "Bangkok", "ym": "2022-02", "avg_aqi": 88.0}, {"city": "Bangkok", "ym": "2022-03", "avg_aqi": 89.4}, {"city": "Bangkok", "ym": "2022-04", "avg_aqi": 83.3}, {"city": "Bangkok", "ym": "2022-05", "avg_aqi": 61.1}, {"city": "Bangkok", "ym": "2022-06", "avg_aqi": 64.4}, {"city": "Bangkok", "ym": "2022-07", "avg_aqi": 61.6}, {"city": "Bangkok", "ym": "2022-08", "avg_aqi": 65.8}, {"city": "Bangkok", "ym": "2022-09", "avg_aqi": 59.9}, {"city": "Bangkok", "ym": "2022-10", "avg_aqi": 68.4}, {"city": "Bangkok", "ym": "2022-11", "avg_aqi": 85.6}, {"city": "Bangkok", "ym": "2022-12", "avg_aqi": 87.5}, {"city": "Bangkok", "ym": "2023-01", "avg_aqi": 95.3}, {"city": "Bangkok", "ym": "2023-02", "avg_aqi": 86.1}, {"city": "Bangkok", "ym": "2023-03", "avg_aqi": 87.2}, {"city": "Bangkok", "ym": "2023-04", "avg_aqi": 87.0}, {"city": "Bangkok", "ym": "2023-05", "avg_aqi": 60.4}, {"city": "Bangkok", "ym": "2023-06", "avg_aqi": 65.0}, {"city": "Bangkok", "ym": "2023-07", "avg_aqi": 74.4}, {"city": "Bangkok", "ym": "2023-08", "avg_aqi": 61.8}, {"city": "Bangkok", "ym": "2023-09", "avg_aqi": 65.1}, {"city": "Bangkok", "ym": "2023-10", "avg_aqi": 59.4}, {"city": "Bangkok", "ym": "2023-11", "avg_aqi": 83.4}, {"city": "Bangkok", "ym": "2023-12", "avg_aqi": 86.8}, {"city": "Beijing", "ym": "2021-01", "avg_aqi": 145.3}, {"city": "Beijing", "ym": "2021-02", "avg_aqi": 133.4}, {"city": "Beijing", "ym": "2021-03", "avg_aqi": 132.4}, {"city": "Beijing", "ym": "2021-04", "avg_aqi": 129.4}, {"city": "Beijing", "ym": "2021-05", "avg_aqi": 126.9}, {"city": "Beijing", "ym": "2021-06", "avg_aqi": 109.4}, {"city": "Beijing", "ym": "2021-07", "avg_aqi": 90.2}, {"city": "Beijing", "ym": "2021-08", "avg_aqi": 98.8}, {"city": "Beijing", "ym": "2021-09", "avg_aqi": 118.7}, {"city": "Beijing", "ym": "2021-10", "avg_aqi": 122.1}, {"city": "Beijing", "ym": "2021-11", "avg_aqi": 135.1}, {"city": "Beijing", "ym": "2021-12", "avg_aqi": 138.2}, {"city": "Beijing", "ym": "2022-01", "avg_aqi": 157.8}, {"city": "Beijing", "ym": "2022-02", "avg_aqi": 147.1}, {"city": "Beijing", "ym": "2022-03", "avg_aqi": 134.8}, {"city": "Beijing", "ym": "2022-04", "avg_aqi": 126.3}, {"city": "Beijing", "ym": "2022-05", "avg_aqi": 120.5}, {"city": "Beijing", "ym": "2022-06", "avg_aqi": 129.6}, {"city": "Beijing", "ym": "2022-07", "avg_aqi": 94.6}, {"city": "Beijing", "ym": "2022-08", "avg_aqi": 99.9}, {"city": "Beijing", "ym": "2022-09", "avg_aqi": 120.4}, {"city": "Beijing", "ym": "2022-10", "avg_aqi": 122.9}, {"city": "Beijing", "ym": "2022-11", "avg_aqi": 138.5}, {"city": "Beijing", "ym": "2022-12", "avg_aqi": 147.1}, {"city": "Beijing", "ym": "2023-01", "avg_aqi": 152.7}, {"city": "Beijing", "ym": "2023-02", "avg_aqi": 140.9}, {"city": "Beijing", "ym": "2023-03", "avg_aqi": 134.9}, {"city": "Beijing", "ym": "2023-04", "avg_aqi": 123.1}, {"city": "Beijing", "ym": "2023-05", "avg_aqi": 124.4}, {"city": "Beijing", "ym": "2023-06", "avg_aqi": 118.8}, {"city": "Beijing", "ym": "2023-07", "avg_aqi": 99.2}, {"city": "Beijing", "ym": "2023-08", "avg_aqi": 92.6}, {"city": "Beijing", "ym": "2023-09", "avg_aqi": 119.9}, {"city": "Beijing", "ym": "2023-10", "avg_aqi": 122.3}, {"city": "Beijing", "ym": "2023-11", "avg_aqi": 129.0}, {"city": "Beijing", "ym": "2023-12", "avg_aqi": 158.8}, {"city": "Colombo", "ym": "2021-01", "avg_aqi": 48.8}, {"city": "Colombo", "ym": "2021-02", "avg_aqi": 43.7}, {"city": "Colombo", "ym": "2021-03", "avg_aqi": 45.9}, {"city": "Colombo", "ym": "2021-04", "avg_aqi": 47.2}, {"city": "Colombo", "ym": "2021-05", "avg_aqi": 20.6}, {"city": "Colombo", "ym": "2021-06", "avg_aqi": 22.4}, {"city": "Colombo", "ym": "2021-07", "avg_aqi": 20.1}, {"city": "Colombo", "ym": "2021-08", "avg_aqi": 19.0}, {"city": "Colombo", "ym": "2021-09", "avg_aqi": 20.2}, {"city": "Colombo", "ym": "2021-10", "avg_aqi": 20.8}, {"city": "Colombo", "ym": "2021-11", "avg_aqi": 51.3}, {"city": "Colombo", "ym": "2021-12", "avg_aqi": 46.0}, {"city": "Colombo", "ym": "2022-01", "avg_aqi": 46.0}, {"city": "Colombo", "ym": "2022-02", "avg_aqi": 52.6}, {"city": "Colombo", "ym": "2022-03", "avg_aqi": 47.4}, {"city": "Colombo", "ym": "2022-04", "avg_aqi": 44.6}, {"city": "Colombo", "ym": "2022-05", "avg_aqi": 20.9}, {"city": "Colombo", "ym": "2022-06", "avg_aqi": 22.8}, {"city": "Colombo", "ym": "2022-07", "avg_aqi": 22.1}, {"city": "Colombo", "ym": "2022-08", "avg_aqi": 22.8}, {"city": "Colombo", "ym": "2022-09", "avg_aqi": 20.2}, {"city": "Colombo", "ym": "2022-10", "avg_aqi": 20.3}, {"city": "Colombo", "ym": "2022-11", "avg_aqi": 47.0}, {"city": "Colombo", "ym": "2022-12", "avg_aqi": 45.0}, {"city": "Colombo", "ym": "2023-01", "avg_aqi": 43.8}, {"city": "Colombo", "ym": "2023-02", "avg_aqi": 45.1}, {"city": "Colombo", "ym": "2023-03", "avg_aqi": 50.6}, {"city": "Colombo", "ym": "2023-04", "avg_aqi": 46.8}, {"city": "Colombo", "ym": "2023-05", "avg_aqi": 22.8}, {"city": "Colombo", "ym": "2023-06", "avg_aqi": 21.0}, {"city": "Colombo", "ym": "2023-07", "avg_aqi": 22.1}, {"city": "Colombo", "ym": "2023-08", "avg_aqi": 21.1}, {"city": "Colombo", "ym": "2023-09", "avg_aqi": 23.4}, {"city": "Colombo", "ym": "2023-10", "avg_aqi": 17.6}, {"city": "Colombo", "ym": "2023-11", "avg_aqi": 46.2}, {"city": "Colombo", "ym": "2023-12", "avg_aqi": 44.8}, {"city": "Delhi", "ym": "2021-01", "avg_aqi": 170.8}, {"city": "Delhi", "ym": "2021-02", "avg_aqi": 167.8}, {"city": "Delhi", "ym": "2021-03", "avg_aqi": 148.6}, {"city": "Delhi", "ym": "2021-04", "avg_aqi": 133.4}, {"city": "Delhi", "ym": "2021-05", "avg_aqi": 132.1}, {"city": "Delhi", "ym": "2021-06", "avg_aqi": 105.2}, {"city": "Delhi", "ym": "2021-07", "avg_aqi": 115.8}, {"city": "Delhi", "ym": "2021-08", "avg_aqi": 115.3}, {"city": "Delhi", "ym": "2021-09", "avg_aqi": 109.5}, {"city": "Delhi", "ym": "2021-10", "avg_aqi": 141.6}, {"city": "Delhi", "ym": "2021-11", "avg_aqi": 150.7}, {"city": "Delhi", "ym": "2021-12", "avg_aqi": 163.8}, {"city": "Delhi", "ym": "2022-01", "avg_aqi": 167.2}, {"city": "Delhi", "ym": "2022-02", "avg_aqi": 167.2}, {"city": "Delhi", "ym": "2022-03", "avg_aqi": 152.4}, {"city": "Delhi", "ym": "2022-04", "avg_aqi": 134.7}, {"city": "Delhi", "ym": "2022-05", "avg_aqi": 136.5}, {"city": "Delhi", "ym": "2022-06", "avg_aqi": 109.6}, {"city": "Delhi", "ym": "2022-07", "avg_aqi": 105.5}, {"city": "Delhi", "ym": "2022-08", "avg_aqi": 108.5}, {"city": "Delhi", "ym": "2022-09", "avg_aqi": 108.8}, {"city": "Delhi", "ym": "2022-10", "avg_aqi": 135.1}, {"city": "Delhi", "ym": "2022-11", "avg_aqi": 158.0}, {"city": "Delhi", "ym": "2022-12", "avg_aqi": 160.5}, {"city": "Delhi", "ym": "2023-01", "avg_aqi": 165.2}, {"city": "Delhi", "ym": "2023-02", "avg_aqi": 159.4}, {"city": "Delhi", "ym": "2023-03", "avg_aqi": 145.2}, {"city": "Delhi", "ym": "2023-04", "avg_aqi": 138.5}, {"city": "Delhi", "ym": "2023-05", "avg_aqi": 128.6}, {"city": "Delhi", "ym": "2023-06", "avg_aqi": 107.5}, {"city": "Delhi", "ym": "2023-07", "avg_aqi": 115.5}, {"city": "Delhi", "ym": "2023-08", "avg_aqi": 104.7}, {"city": "Delhi", "ym": "2023-09", "avg_aqi": 104.8}, {"city": "Delhi", "ym": "2023-10", "avg_aqi": 137.5}, {"city": "Delhi", "ym": "2023-11", "avg_aqi": 150.2}, {"city": "Delhi", "ym": "2023-12", "avg_aqi": 159.5}, {"city": "Dhaka", "ym": "2021-01", "avg_aqi": 176.6}, {"city": "Dhaka", "ym": "2021-02", "avg_aqi": 162.2}, {"city": "Dhaka", "ym": "2021-03", "avg_aqi": 160.0}, {"city": "Dhaka", "ym": "2021-04", "avg_aqi": 144.8}, {"city": "Dhaka", "ym": "2021-05", "avg_aqi": 140.4}, {"city": "Dhaka", "ym": "2021-06", "avg_aqi": 122.0}, {"city": "Dhaka", "ym": "2021-07", "avg_aqi": 120.0}, {"city": "Dhaka", "ym": "2021-08", "avg_aqi": 114.8}, {"city": "Dhaka", "ym": "2021-09", "avg_aqi": 114.6}, {"city": "Dhaka", "ym": "2021-10", "avg_aqi": 150.1}, {"city": "Dhaka", "ym": "2021-11", "avg_aqi": 163.8}, {"city": "Dhaka", "ym": "2021-12", "avg_aqi": 172.6}, {"city": "Dhaka", "ym": "2022-01", "avg_aqi": 173.7}, {"city": "Dhaka", "ym": "2022-02", "avg_aqi": 174.8}, {"city": "Dhaka", "ym": "2022-03", "avg_aqi": 158.8}, {"city": "Dhaka", "ym": "2022-04", "avg_aqi": 138.6}, {"city": "Dhaka", "ym": "2022-05", "avg_aqi": 148.1}, {"city": "Dhaka", "ym": "2022-06", "avg_aqi": 133.5}, {"city": "Dhaka", "ym": "2022-07", "avg_aqi": 114.3}, {"city": "Dhaka", "ym": "2022-08", "avg_aqi": 123.0}, {"city": "Dhaka", "ym": "2022-09", "avg_aqi": 112.6}, {"city": "Dhaka", "ym": "2022-10", "avg_aqi": 148.1}, {"city": "Dhaka", "ym": "2022-11", "avg_aqi": 158.2}, {"city": "Dhaka", "ym": "2022-12", "avg_aqi": 178.6}, {"city": "Dhaka", "ym": "2023-01", "avg_aqi": 176.2}, {"city": "Dhaka", "ym": "2023-02", "avg_aqi": 169.5}, {"city": "Dhaka", "ym": "2023-03", "avg_aqi": 160.8}, {"city": "Dhaka", "ym": "2023-04", "avg_aqi": 142.2}, {"city": "Dhaka", "ym": "2023-05", "avg_aqi": 144.6}, {"city": "Dhaka", "ym": "2023-06", "avg_aqi": 120.9}, {"city": "Dhaka", "ym": "2023-07", "avg_aqi": 122.3}, {"city": "Dhaka", "ym": "2023-08", "avg_aqi": 120.9}, {"city": "Dhaka", "ym": "2023-09", "avg_aqi": 118.9}, {"city": "Dhaka", "ym": "2023-10", "avg_aqi": 143.3}, {"city": "Dhaka", "ym": "2023-11", "avg_aqi": 174.8}, {"city": "Dhaka", "ym": "2023-12", "avg_aqi": 172.4}, {"city": "Hanoi", "ym": "2021-01", "avg_aqi": 122.5}, {"city": "Hanoi", "ym": "2021-02", "avg_aqi": 113.7}, {"city": "Hanoi", "ym": "2021-03", "avg_aqi": 101.8}, {"city": "Hanoi", "ym": "2021-04", "avg_aqi": 94.1}, {"city": "Hanoi", "ym": "2021-05", "avg_aqi": 79.0}, {"city": "Hanoi", "ym": "2021-06", "avg_aqi": 64.0}, {"city": "Hanoi", "ym": "2021-07", "avg_aqi": 63.3}, {"city": "Hanoi", "ym": "2021-08", "avg_aqi": 66.1}, {"city": "Hanoi", "ym": "2021-09", "avg_aqi": 64.1}, {"city": "Hanoi", "ym": "2021-10", "avg_aqi": 94.2}, {"city": "Hanoi", "ym": "2021-11", "avg_aqi": 104.8}, {"city": "Hanoi", "ym": "2021-12", "avg_aqi": 118.2}, {"city": "Hanoi", "ym": "2022-01", "avg_aqi": 118.6}, {"city": "Hanoi", "ym": "2022-02", "avg_aqi": 116.6}, {"city": "Hanoi", "ym": "2022-03", "avg_aqi": 103.6}, {"city": "Hanoi", "ym": "2022-04", "avg_aqi": 84.7}, {"city": "Hanoi", "ym": "2022-05", "avg_aqi": 66.7}, {"city": "Hanoi", "ym": "2022-06", "avg_aqi": 69.5}, {"city": "Hanoi", "ym": "2022-07", "avg_aqi": 69.8}, {"city": "Hanoi", "ym": "2022-08", "avg_aqi": 67.0}, {"city": "Hanoi", "ym": "2022-09", "avg_aqi": 69.4}, {"city": "Hanoi", "ym": "2022-10", "avg_aqi": 95.1}, {"city": "Hanoi", "ym": "2022-11", "avg_aqi": 108.5}, {"city": "Hanoi", "ym": "2022-12", "avg_aqi": 122.1}, {"city": "Hanoi", "ym": "2023-01", "avg_aqi": 118.2}, {"city": "Hanoi", "ym": "2023-02", "avg_aqi": 116.5}, {"city": "Hanoi", "ym": "2023-03", "avg_aqi": 101.2}, {"city": "Hanoi", "ym": "2023-04", "avg_aqi": 88.4}, {"city": "Hanoi", "ym": "2023-05", "avg_aqi": 62.6}, {"city": "Hanoi", "ym": "2023-06", "avg_aqi": 66.1}, {"city": "Hanoi", "ym": "2023-07", "avg_aqi": 63.1}, {"city": "Hanoi", "ym": "2023-08", "avg_aqi": 61.7}, {"city": "Hanoi", "ym": "2023-09", "avg_aqi": 65.7}, {"city": "Hanoi", "ym": "2023-10", "avg_aqi": 95.2}, {"city": "Hanoi", "ym": "2023-11", "avg_aqi": 104.6}, {"city": "Hanoi", "ym": "2023-12", "avg_aqi": 113.5}, {"city": "Jakarta", "ym": "2021-01", "avg_aqi": 49.0}, {"city": "Jakarta", "ym": "2021-02", "avg_aqi": 51.9}, {"city": "Jakarta", "ym": "2021-03", "avg_aqi": 53.3}, {"city": "Jakarta", "ym": "2021-04", "avg_aqi": 72.3}, {"city": "Jakarta", "ym": "2021-05", "avg_aqi": 74.9}, {"city": "Jakarta", "ym": "2021-06", "avg_aqi": 74.1}, {"city": "Jakarta", "ym": "2021-07", "avg_aqi": 76.6}, {"city": "Jakarta", "ym": "2021-08", "avg_aqi": 80.3}, {"city": "Jakarta", "ym": "2021-09", "avg_aqi": 76.4}, {"city": "Jakarta", "ym": "2021-10", "avg_aqi": 74.1}, {"city": "Jakarta", "ym": "2021-11", "avg_aqi": 52.4}, {"city": "Jakarta", "ym": "2021-12", "avg_aqi": 48.9}, {"city": "Jakarta", "ym": "2022-01", "avg_aqi": 53.0}, {"city": "Jakarta", "ym": "2022-02", "avg_aqi": 51.7}, {"city": "Jakarta", "ym": "2022-03", "avg_aqi": 48.1}, {"city": "Jakarta", "ym": "2022-04", "avg_aqi": 78.8}, {"city": "Jakarta", "ym": "2022-05", "avg_aqi": 74.0}, {"city": "Jakarta", "ym": "2022-06", "avg_aqi": 78.4}, {"city": "Jakarta", "ym": "2022-07", "avg_aqi": 70.6}, {"city": "Jakarta", "ym": "2022-08", "avg_aqi": 75.9}, {"city": "Jakarta", "ym": "2022-09", "avg_aqi": 76.0}, {"city": "Jakarta", "ym": "2022-10", "avg_aqi": 76.6}, {"city": "Jakarta", "ym": "2022-11", "avg_aqi": 49.4}, {"city": "Jakarta", "ym": "2022-12", "avg_aqi": 47.5}, {"city": "Jakarta", "ym": "2023-01", "avg_aqi": 51.1}, {"city": "Jakarta", "ym": "2023-02", "avg_aqi": 53.8}, {"city": "Jakarta", "ym": "2023-03", "avg_aqi": 48.4}, {"city": "Jakarta", "ym": "2023-04", "avg_aqi": 76.9}, {"city": "Jakarta", "ym": "2023-05", "avg_aqi": 78.7}, {"city": "Jakarta", "ym": "2023-06", "avg_aqi": 77.5}, {"city": "Jakarta", "ym": "2023-07", "avg_aqi": 77.0}, {"city": "Jakarta", "ym": "2023-08", "avg_aqi": 76.4}, {"city": "Jakarta", "ym": "2023-09", "avg_aqi": 70.2}, {"city": "Jakarta", "ym": "2023-10", "avg_aqi": 75.6}, {"city": "Jakarta", "ym": "2023-11", "avg_aqi": 46.3}, {"city": "Jakarta", "ym": "2023-12", "avg_aqi": 49.8}, {"city": "Kandy", "ym": "2021-01", "avg_aqi": 30.9}, {"city": "Kandy", "ym": "2021-02", "avg_aqi": 31.7}, {"city": "Kandy", "ym": "2021-03", "avg_aqi": 30.0}, {"city": "Kandy", "ym": "2021-04", "avg_aqi": 31.2}, {"city": "Kandy", "ym": "2021-05", "avg_aqi": 8.0}, {"city": "Kandy", "ym": "2021-06", "avg_aqi": 8.2}, {"city": "Kandy", "ym": "2021-07", "avg_aqi": 8.3}, {"city": "Kandy", "ym": "2021-08", "avg_aqi": 8.2}, {"city": "Kandy", "ym": "2021-09", "avg_aqi": 9.7}, {"city": "Kandy", "ym": "2021-10", "avg_aqi": 9.1}, {"city": "Kandy", "ym": "2021-11", "avg_aqi": 32.3}, {"city": "Kandy", "ym": "2021-12", "avg_aqi": 30.7}, {"city": "Kandy", "ym": "2022-01", "avg_aqi": 30.9}, {"city": "Kandy", "ym": "2022-02", "avg_aqi": 32.1}, {"city": "Kandy", "ym": "2022-03", "avg_aqi": 31.0}, {"city": "Kandy", "ym": "2022-04", "avg_aqi": 30.3}, {"city": "Kandy", "ym": "2022-05", "avg_aqi": 10.1}, {"city": "Kandy", "ym": "2022-06", "avg_aqi": 8.7}, {"city": "Kandy", "ym": "2022-07", "avg_aqi": 8.7}, {"city": "Kandy", "ym": "2022-08", "avg_aqi": 8.2}, {"city": "Kandy", "ym": "2022-09", "avg_aqi": 10.3}, {"city": "Kandy", "ym": "2022-10", "avg_aqi": 8.9}, {"city": "Kandy", "ym": "2022-11", "avg_aqi": 28.7}, {"city": "Kandy", "ym": "2022-12", "avg_aqi": 35.6}, {"city": "Kandy", "ym": "2023-01", "avg_aqi": 31.3}, {"city": "Kandy", "ym": "2023-02", "avg_aqi": 33.6}, {"city": "Kandy", "ym": "2023-03", "avg_aqi": 32.2}, {"city": "Kandy", "ym": "2023-04", "avg_aqi": 27.6}, {"city": "Kandy", "ym": "2023-05", "avg_aqi": 8.0}, {"city": "Kandy", "ym": "2023-06", "avg_aqi": 10.9}, {"city": "Kandy", "ym": "2023-07", "avg_aqi": 8.7}, {"city": "Kandy", "ym": "2023-08", "avg_aqi": 10.0}, {"city": "Kandy", "ym": "2023-09", "avg_aqi": 9.9}, {"city": "Kandy", "ym": "2023-10", "avg_aqi": 8.0}, {"city": "Kandy", "ym": "2023-11", "avg_aqi": 30.1}, {"city": "Kandy", "ym": "2023-12", "avg_aqi": 32.8}, {"city": "Karachi", "ym": "2021-01", "avg_aqi": 144.9}, {"city": "Karachi", "ym": "2021-02", "avg_aqi": 137.2}, {"city": "Karachi", "ym": "2021-03", "avg_aqi": 121.7}, {"city": "Karachi", "ym": "2021-04", "avg_aqi": 112.6}, {"city": "Karachi", "ym": "2021-05", "avg_aqi": 103.0}, {"city": "Karachi", "ym": "2021-06", "avg_aqi": 116.1}, {"city": "Karachi", "ym": "2021-07", "avg_aqi": 84.3}, {"city": "Karachi", "ym": "2021-08", "avg_aqi": 86.3}, {"city": "Karachi", "ym": "2021-09", "avg_aqi": 111.1}, {"city": "Karachi", "ym": "2021-10", "avg_aqi": 109.5}, {"city": "Karachi", "ym": "2021-11", "avg_aqi": 121.8}, {"city": "Karachi", "ym": "2021-12", "avg_aqi": 133.2}, {"city": "Karachi", "ym": "2022-01", "avg_aqi": 140.8}, {"city": "Karachi", "ym": "2022-02", "avg_aqi": 135.5}, {"city": "Karachi", "ym": "2022-03", "avg_aqi": 122.4}, {"city": "Karachi", "ym": "2022-04", "avg_aqi": 112.3}, {"city": "Karachi", "ym": "2022-05", "avg_aqi": 106.2}, {"city": "Karachi", "ym": "2022-06", "avg_aqi": 113.2}, {"city": "Karachi", "ym": "2022-07", "avg_aqi": 87.1}, {"city": "Karachi", "ym": "2022-08", "avg_aqi": 89.0}, {"city": "Karachi", "ym": "2022-09", "avg_aqi": 111.4}, {"city": "Karachi", "ym": "2022-10", "avg_aqi": 120.0}, {"city": "Karachi", "ym": "2022-11", "avg_aqi": 126.6}, {"city": "Karachi", "ym": "2022-12", "avg_aqi": 143.1}, {"city": "Karachi", "ym": "2023-01", "avg_aqi": 144.7}, {"city": "Karachi", "ym": "2023-02", "avg_aqi": 131.9}, {"city": "Karachi", "ym": "2023-03", "avg_aqi": 125.9}, {"city": "Karachi", "ym": "2023-04", "avg_aqi": 108.1}, {"city": "Karachi", "ym": "2023-05", "avg_aqi": 109.2}, {"city": "Karachi", "ym": "2023-06", "avg_aqi": 112.3}, {"city": "Karachi", "ym": "2023-07", "avg_aqi": 82.9}, {"city": "Karachi", "ym": "2023-08", "avg_aqi": 89.5}, {"city": "Karachi", "ym": "2023-09", "avg_aqi": 117.3}, {"city": "Karachi", "ym": "2023-10", "avg_aqi": 114.1}, {"city": "Karachi", "ym": "2023-11", "avg_aqi": 128.8}, {"city": "Karachi", "ym": "2023-12", "avg_aqi": 138.7}, {"city": "Kathmandu", "ym": "2021-01", "avg_aqi": 122.5}, {"city": "Kathmandu", "ym": "2021-02", "avg_aqi": 126.0}, {"city": "Kathmandu", "ym": "2021-03", "avg_aqi": 112.5}, {"city": "Kathmandu", "ym": "2021-04", "avg_aqi": 102.8}, {"city": "Kathmandu", "ym": "2021-05", "avg_aqi": 103.2}, {"city": "Kathmandu", "ym": "2021-06", "avg_aqi": 81.7}, {"city": "Kathmandu", "ym": "2021-07", "avg_aqi": 74.9}, {"city": "Kathmandu", "ym": "2021-08", "avg_aqi": 75.8}, {"city": "Kathmandu", "ym": "2021-09", "avg_aqi": 74.0}, {"city": "Kathmandu", "ym": "2021-10", "avg_aqi": 103.8}, {"city": "Kathmandu", "ym": "2021-11", "avg_aqi": 114.0}, {"city": "Kathmandu", "ym": "2021-12", "avg_aqi": 125.8}, {"city": "Kathmandu", "ym": "2022-01", "avg_aqi": 129.8}, {"city": "Kathmandu", "ym": "2022-02", "avg_aqi": 128.5}, {"city": "Kathmandu", "ym": "2022-03", "avg_aqi": 119.0}, {"city": "Kathmandu", "ym": "2022-04", "avg_aqi": 98.6}, {"city": "Kathmandu", "ym": "2022-05", "avg_aqi": 100.4}, {"city": "Kathmandu", "ym": "2022-06", "avg_aqi": 75.7}, {"city": "Kathmandu", "ym": "2022-07", "avg_aqi": 78.8}, {"city": "Kathmandu", "ym": "2022-08", "avg_aqi": 74.5}, {"city": "Kathmandu", "ym": "2022-09", "avg_aqi": 81.1}, {"city": "Kathmandu", "ym": "2022-10", "avg_aqi": 105.8}, {"city": "Kathmandu", "ym": "2022-11", "avg_aqi": 119.7}, {"city": "Kathmandu", "ym": "2022-12", "avg_aqi": 130.9}, {"city": "Kathmandu", "ym": "2023-01", "avg_aqi": 128.7}, {"city": "Kathmandu", "ym": "2023-02", "avg_aqi": 123.9}, {"city": "Kathmandu", "ym": "2023-03", "avg_aqi": 113.7}, {"city": "Kathmandu", "ym": "2023-04", "avg_aqi": 101.0}, {"city": "Kathmandu", "ym": "2023-05", "avg_aqi": 102.4}, {"city": "Kathmandu", "ym": "2023-06", "avg_aqi": 75.8}, {"city": "Kathmandu", "ym": "2023-07", "avg_aqi": 69.7}, {"city": "Kathmandu", "ym": "2023-08", "avg_aqi": 77.1}, {"city": "Kathmandu", "ym": "2023-09", "avg_aqi": 77.3}, {"city": "Kathmandu", "ym": "2023-10", "avg_aqi": 109.2}, {"city": "Kathmandu", "ym": "2023-11", "avg_aqi": 117.8}, {"city": "Kathmandu", "ym": "2023-12", "avg_aqi": 124.5}, {"city": "Kuala Lumpur", "ym": "2021-01", "avg_aqi": 49.3}, {"city": "Kuala Lumpur", "ym": "2021-02", "avg_aqi": 52.8}, {"city": "Kuala Lumpur", "ym": "2021-03", "avg_aqi": 49.7}, {"city": "Kuala Lumpur", "ym": "2021-04", "avg_aqi": 26.1}, {"city": "Kuala Lumpur", "ym": "2021-05", "avg_aqi": 27.2}, {"city": "Kuala Lumpur", "ym": "2021-06", "avg_aqi": 51.8}, {"city": "Kuala Lumpur", "ym": "2021-07", "avg_aqi": 48.5}, {"city": "Kuala Lumpur", "ym": "2021-08", "avg_aqi": 49.5}, {"city": "Kuala Lumpur", "ym": "2021-09", "avg_aqi": 48.6}, {"city": "Kuala Lumpur", "ym": "2021-10", "avg_aqi": 29.5}, {"city": "Kuala Lumpur", "ym": "2021-11", "avg_aqi": 26.5}, {"city": "Kuala Lumpur", "ym": "2021-12", "avg_aqi": 50.6}, {"city": "Kuala Lumpur", "ym": "2022-01", "avg_aqi": 49.5}, {"city": "Kuala Lumpur", "ym": "2022-02", "avg_aqi": 52.3}, {"city": "Kuala Lumpur", "ym": "2022-03", "avg_aqi": 53.7}, {"city": "Kuala Lumpur", "ym": "2022-04", "avg_aqi": 25.1}, {"city": "Kuala Lumpur", "ym": "2022-05", "avg_aqi": 28.0}, {"city": "Kuala Lumpur", "ym": "2022-06", "avg_aqi": 51.3}, {"city": "Kuala Lumpur", "ym": "2022-07", "avg_aqi": 50.1}, {"city": "Kuala Lumpur", "ym": "2022-08", "avg_aqi": 51.7}, {"city": "Kuala Lumpur", "ym": "2022-09", "avg_aqi": 49.4}, {"city": "Kuala Lumpur", "ym": "2022-10", "avg_aqi": 25.1}, {"city": "Kuala Lumpur", "ym": "2022-11", "avg_aqi": 22.9}, {"city": "Kuala Lumpur", "ym": "2022-12", "avg_aqi": 50.1}, {"city": "Kuala Lumpur", "ym": "2023-01", "avg_aqi": 54.6}, {"city": "Kuala Lumpur", "ym": "2023-02", "avg_aqi": 52.1}, {"city": "Kuala Lumpur", "ym": "2023-03", "avg_aqi": 50.8}, {"city": "Kuala Lumpur", "ym": "2023-04", "avg_aqi": 23.9}, {"city": "Kuala Lumpur", "ym": "2023-05", "avg_aqi": 27.6}, {"city": "Kuala Lumpur", "ym": "2023-06", "avg_aqi": 49.2}, {"city": "Kuala Lumpur", "ym": "2023-07", "avg_aqi": 49.8}, {"city": "Kuala Lumpur", "ym": "2023-08", "avg_aqi": 51.2}, {"city": "Kuala Lumpur", "ym": "2023-09", "avg_aqi": 50.0}, {"city": "Kuala Lumpur", "ym": "2023-10", "avg_aqi": 24.7}, {"city": "Kuala Lumpur", "ym": "2023-11", "avg_aqi": 27.4}, {"city": "Kuala Lumpur", "ym": "2023-12", "avg_aqi": 50.6}, {"city": "Manila", "ym": "2021-01", "avg_aqi": 67.5}, {"city": "Manila", "ym": "2021-02", "avg_aqi": 64.2}, {"city": "Manila", "ym": "2021-03", "avg_aqi": 64.2}, {"city": "Manila", "ym": "2021-04", "avg_aqi": 67.9}, {"city": "Manila", "ym": "2021-05", "avg_aqi": 68.1}, {"city": "Manila", "ym": "2021-06", "avg_aqi": 39.2}, {"city": "Manila", "ym": "2021-07", "avg_aqi": 42.0}, {"city": "Manila", "ym": "2021-08", "avg_aqi": 40.1}, {"city": "Manila", "ym": "2021-09", "avg_aqi": 40.1}, {"city": "Manila", "ym": "2021-10", "avg_aqi": 38.3}, {"city": "Manila", "ym": "2021-11", "avg_aqi": 39.0}, {"city": "Manila", "ym": "2021-12", "avg_aqi": 71.0}, {"city": "Manila", "ym": "2022-01", "avg_aqi": 68.9}, {"city": "Manila", "ym": "2022-02", "avg_aqi": 67.1}, {"city": "Manila", "ym": "2022-03", "avg_aqi": 65.4}, {"city": "Manila", "ym": "2022-04", "avg_aqi": 79.3}, {"city": "Manila", "ym": "2022-05", "avg_aqi": 70.6}, {"city": "Manila", "ym": "2022-06", "avg_aqi": 42.3}, {"city": "Manila", "ym": "2022-07", "avg_aqi": 39.7}, {"city": "Manila", "ym": "2022-08", "avg_aqi": 40.4}, {"city": "Manila", "ym": "2022-09", "avg_aqi": 44.8}, {"city": "Manila", "ym": "2022-10", "avg_aqi": 42.0}, {"city": "Manila", "ym": "2022-11", "avg_aqi": 39.7}, {"city": "Manila", "ym": "2022-12", "avg_aqi": 68.0}, {"city": "Manila", "ym": "2023-01", "avg_aqi": 69.5}, {"city": "Manila", "ym": "2023-02", "avg_aqi": 64.7}, {"city": "Manila", "ym": "2023-03", "avg_aqi": 64.2}, {"city": "Manila", "ym": "2023-04", "avg_aqi": 67.8}, {"city": "Manila", "ym": "2023-05", "avg_aqi": 72.3}, {"city": "Manila", "ym": "2023-06", "avg_aqi": 43.5}, {"city": "Manila", "ym": "2023-07", "avg_aqi": 46.3}, {"city": "Manila", "ym": "2023-08", "avg_aqi": 41.3}, {"city": "Manila", "ym": "2023-09", "avg_aqi": 39.5}, {"city": "Manila", "ym": "2023-10", "avg_aqi": 39.1}, {"city": "Manila", "ym": "2023-11", "avg_aqi": 42.7}, {"city": "Manila", "ym": "2023-12", "avg_aqi": 69.9}, {"city": "Mumbai", "ym": "2021-01", "avg_aqi": 79.2}, {"city": "Mumbai", "ym": "2021-02", "avg_aqi": 82.3}, {"city": "Mumbai", "ym": "2021-03", "avg_aqi": 84.9}, {"city": "Mumbai", "ym": "2021-04", "avg_aqi": 77.9}, {"city": "Mumbai", "ym": "2021-05", "avg_aqi": 78.8}, {"city": "Mumbai", "ym": "2021-06", "avg_aqi": 56.8}, {"city": "Mumbai", "ym": "2021-07", "avg_aqi": 57.4}, {"city": "Mumbai", "ym": "2021-08", "avg_aqi": 50.4}, {"city": "Mumbai", "ym": "2021-09", "avg_aqi": 50.9}, {"city": "Mumbai", "ym": "2021-10", "avg_aqi": 80.2}, {"city": "Mumbai", "ym": "2021-11", "avg_aqi": 79.7}, {"city": "Mumbai", "ym": "2021-12", "avg_aqi": 80.5}, {"city": "Mumbai", "ym": "2022-01", "avg_aqi": 80.5}, {"city": "Mumbai", "ym": "2022-02", "avg_aqi": 80.8}, {"city": "Mumbai", "ym": "2022-03", "avg_aqi": 75.5}, {"city": "Mumbai", "ym": "2022-04", "avg_aqi": 85.7}, {"city": "Mumbai", "ym": "2022-05", "avg_aqi": 80.2}, {"city": "Mumbai", "ym": "2022-06", "avg_aqi": 55.4}, {"city": "Mumbai", "ym": "2022-07", "avg_aqi": 51.4}, {"city": "Mumbai", "ym": "2022-08", "avg_aqi": 57.4}, {"city": "Mumbai", "ym": "2022-09", "avg_aqi": 53.7}, {"city": "Mumbai", "ym": "2022-10", "avg_aqi": 80.3}, {"city": "Mumbai", "ym": "2022-11", "avg_aqi": 82.2}, {"city": "Mumbai", "ym": "2022-12", "avg_aqi": 78.7}, {"city": "Mumbai", "ym": "2023-01", "avg_aqi": 78.7}, {"city": "Mumbai", "ym": "2023-02", "avg_aqi": 91.0}, {"city": "Mumbai", "ym": "2023-03", "avg_aqi": 80.7}, {"city": "Mumbai", "ym": "2023-04", "avg_aqi": 78.8}, {"city": "Mumbai", "ym": "2023-05", "avg_aqi": 79.7}, {"city": "Mumbai", "ym": "2023-06", "avg_aqi": 57.8}, {"city": "Mumbai", "ym": "2023-07", "avg_aqi": 52.7}, {"city": "Mumbai", "ym": "2023-08", "avg_aqi": 54.0}, {"city": "Mumbai", "ym": "2023-09", "avg_aqi": 50.5}, {"city": "Mumbai", "ym": "2023-10", "avg_aqi": 81.9}, {"city": "Mumbai", "ym": "2023-11", "avg_aqi": 82.7}, {"city": "Mumbai", "ym": "2023-12", "avg_aqi": 80.8}, {"city": "Shanghai", "ym": "2021-01", "avg_aqi": 117.4}, {"city": "Shanghai", "ym": "2021-02", "avg_aqi": 101.3}, {"city": "Shanghai", "ym": "2021-03", "avg_aqi": 87.0}, {"city": "Shanghai", "ym": "2021-04", "avg_aqi": 81.8}, {"city": "Shanghai", "ym": "2021-05", "avg_aqi": 74.3}, {"city": "Shanghai", "ym": "2021-06", "avg_aqi": 51.3}, {"city": "Shanghai", "ym": "2021-07", "avg_aqi": 51.6}, {"city": "Shanghai", "ym": "2021-08", "avg_aqi": 45.1}, {"city": "Shanghai", "ym": "2021-09", "avg_aqi": 71.6}, {"city": "Shanghai", "ym": "2021-10", "avg_aqi": 76.9}, {"city": "Shanghai", "ym": "2021-11", "avg_aqi": 95.9}, {"city": "Shanghai", "ym": "2021-12", "avg_aqi": 111.0}, {"city": "Shanghai", "ym": "2022-01", "avg_aqi": 101.9}, {"city": "Shanghai", "ym": "2022-02", "avg_aqi": 104.2}, {"city": "Shanghai", "ym": "2022-03", "avg_aqi": 86.6}, {"city": "Shanghai", "ym": "2022-04", "avg_aqi": 82.5}, {"city": "Shanghai", "ym": "2022-05", "avg_aqi": 78.6}, {"city": "Shanghai", "ym": "2022-06", "avg_aqi": 48.9}, {"city": "Shanghai", "ym": "2022-07", "avg_aqi": 49.8}, {"city": "Shanghai", "ym": "2022-08", "avg_aqi": 47.3}, {"city": "Shanghai", "ym": "2022-09", "avg_aqi": 72.8}, {"city": "Shanghai", "ym": "2022-10", "avg_aqi": 83.2}, {"city": "Shanghai", "ym": "2022-11", "avg_aqi": 96.8}, {"city": "Shanghai", "ym": "2022-12", "avg_aqi": 103.9}, {"city": "Shanghai", "ym": "2023-01", "avg_aqi": 106.3}, {"city": "Shanghai", "ym": "2023-02", "avg_aqi": 103.3}, {"city": "Shanghai", "ym": "2023-03", "avg_aqi": 87.3}, {"city": "Shanghai", "ym": "2023-04", "avg_aqi": 72.5}, {"city": "Shanghai", "ym": "2023-05", "avg_aqi": 75.2}, {"city": "Shanghai", "ym": "2023-06", "avg_aqi": 48.3}, {"city": "Shanghai", "ym": "2023-07", "avg_aqi": 50.6}, {"city": "Shanghai", "ym": "2023-08", "avg_aqi": 51.9}, {"city": "Shanghai", "ym": "2023-09", "avg_aqi": 79.4}, {"city": "Shanghai", "ym": "2023-10", "avg_aqi": 81.0}, {"city": "Shanghai", "ym": "2023-11", "avg_aqi": 92.6}, {"city": "Shanghai", "ym": "2023-12", "avg_aqi": 100.7}, {"city": "Singapore", "ym": "2021-01", "avg_aqi": 11.8}, {"city": "Singapore", "ym": "2021-02", "avg_aqi": 12.3}, {"city": "Singapore", "ym": "2021-03", "avg_aqi": 35.0}, {"city": "Singapore", "ym": "2021-04", "avg_aqi": 33.1}, {"city": "Singapore", "ym": "2021-05", "avg_aqi": 34.2}, {"city": "Singapore", "ym": "2021-06", "avg_aqi": 36.1}, {"city": "Singapore", "ym": "2021-07", "avg_aqi": 44.5}, {"city": "Singapore", "ym": "2021-08", "avg_aqi": 34.4}, {"city": "Singapore", "ym": "2021-09", "avg_aqi": 41.5}, {"city": "Singapore", "ym": "2021-10", "avg_aqi": 39.1}, {"city": "Singapore", "ym": "2021-11", "avg_aqi": 11.4}, {"city": "Singapore", "ym": "2021-12", "avg_aqi": 12.2}, {"city": "Singapore", "ym": "2022-01", "avg_aqi": 12.1}, {"city": "Singapore", "ym": "2022-02", "avg_aqi": 11.4}, {"city": "Singapore", "ym": "2022-03", "avg_aqi": 36.6}, {"city": "Singapore", "ym": "2022-04", "avg_aqi": 35.4}, {"city": "Singapore", "ym": "2022-05", "avg_aqi": 38.7}, {"city": "Singapore", "ym": "2022-06", "avg_aqi": 35.5}, {"city": "Singapore", "ym": "2022-07", "avg_aqi": 33.9}, {"city": "Singapore", "ym": "2022-08", "avg_aqi": 34.2}, {"city": "Singapore", "ym": "2022-09", "avg_aqi": 35.3}, {"city": "Singapore", "ym": "2022-10", "avg_aqi": 36.0}, {"city": "Singapore", "ym": "2022-11", "avg_aqi": 10.4}, {"city": "Singapore", "ym": "2022-12", "avg_aqi": 15.9}, {"city": "Singapore", "ym": "2023-01", "avg_aqi": 13.9}, {"city": "Singapore", "ym": "2023-02", "avg_aqi": 10.6}, {"city": "Singapore", "ym": "2023-03", "avg_aqi": 33.1}, {"city": "Singapore", "ym": "2023-04", "avg_aqi": 35.1}, {"city": "Singapore", "ym": "2023-05", "avg_aqi": 36.4}, {"city": "Singapore", "ym": "2023-06", "avg_aqi": 35.8}, {"city": "Singapore", "ym": "2023-07", "avg_aqi": 34.4}, {"city": "Singapore", "ym": "2023-08", "avg_aqi": 35.9}, {"city": "Singapore", "ym": "2023-09", "avg_aqi": 36.8}, {"city": "Singapore", "ym": "2023-10", "avg_aqi": 35.4}, {"city": "Singapore", "ym": "2023-11", "avg_aqi": 10.4}, {"city": "Singapore", "ym": "2023-12", "avg_aqi": 11.8}], "season_avg": [{"city": "Bangkok", "season": "Autumn", "avg_aqi": 69.8}, {"city": "Bangkok", "season": "Spring", "avg_aqi": 77.6}, {"city": "Bangkok", "season": "Summer", "avg_aqi": 64.8}, {"city": "Bangkok", "season": "Winter", "avg_aqi": 89.5}, {"city": "Beijing", "season": "Autumn", "avg_aqi": 125.4}, {"city": "Beijing", "season": "Spring", "avg_aqi": 128.1}, {"city": "Beijing", "season": "Summer", "avg_aqi": 103.5}, {"city": "Beijing", "season": "Winter", "avg_aqi": 147.1}, {"city": "Colombo", "season": "Autumn", "avg_aqi": 29.5}, {"city": "Colombo", "season": "Spring", "avg_aqi": 38.4}, {"city": "Colombo", "season": "Summer", "avg_aqi": 21.5}, {"city": "Colombo", "season": "Winter", "avg_aqi": 46.2}, {"city": "Delhi", "season": "Autumn", "avg_aqi": 132.5}, {"city": "Delhi", "season": "Spring", "avg_aqi": 138.9}, {"city": "Delhi", "season": "Summer", "avg_aqi": 109.7}, {"city": "Delhi", "season": "Winter", "avg_aqi": 164.6}, {"city": "Dhaka", "season": "Autumn", "avg_aqi": 142.9}, {"city": "Dhaka", "season": "Spring", "avg_aqi": 148.8}, {"city": "Dhaka", "season": "Summer", "avg_aqi": 121.3}, {"city": "Dhaka", "season": "Winter", "avg_aqi": 173.1}, {"city": "Hanoi", "season": "Autumn", "avg_aqi": 89.0}, {"city": "Hanoi", "season": "Spring", "avg_aqi": 86.9}, {"city": "Hanoi", "season": "Summer", "avg_aqi": 65.6}, {"city": "Hanoi", "season": "Winter", "avg_aqi": 117.8}, {"city": "Jakarta", "season": "Autumn", "avg_aqi": 67.3}, {"city": "Jakarta", "season": "Spring", "avg_aqi": 66.5}, {"city": "Jakarta", "season": "Summer", "avg_aqi": 50.7}, {"city": "Jakarta", "season": "Winter", "avg_aqi": 76.3}, {"city": "Kandy", "season": "Autumn", "avg_aqi": 16.3}, {"city": "Kandy", "season": "Spring", "avg_aqi": 23.1}, {"city": "Kandy", "season": "Summer", "avg_aqi": 8.9}, {"city": "Kandy", "season": "Winter", "avg_aqi": 32.2}, {"city": "Karachi", "season": "Autumn", "avg_aqi": 117.7}, {"city": "Karachi", "season": "Spring", "avg_aqi": 113.6}, {"city": "Karachi", "season": "Summer", "avg_aqi": 95.5}, {"city": "Karachi", "season": "Winter", "avg_aqi": 139.0}, {"city": "Kathmandu", "season": "Autumn", "avg_aqi": 100.4}, {"city": "Kathmandu", "season": "Spring", "avg_aqi": 106.0}, {"city": "Kathmandu", "season": "Summer", "avg_aqi": 76.0}, {"city": "Kathmandu", "season": "Winter", "avg_aqi": 126.8}, {"city": "Kuala Lumpur", "season": "Autumn", "avg_aqi": 33.8}, {"city": "Kuala Lumpur", "season": "Spring", "avg_aqi": 34.7}, {"city": "Kuala Lumpur", "season": "Summer", "avg_aqi": 50.3}, {"city": "Kuala Lumpur", "season": "Winter", "avg_aqi": 51.3}, {"city": "Manila", "season": "Autumn", "avg_aqi": 40.5}, {"city": "Manila", "season": "Spring", "avg_aqi": 68.9}, {"city": "Manila", "season": "Summer", "avg_aqi": 41.6}, {"city": "Manila", "season": "Winter", "avg_aqi": 68.0}, {"city": "Mumbai", "season": "Autumn", "avg_aqi": 71.4}, {"city": "Mumbai", "season": "Spring", "avg_aqi": 80.2}, {"city": "Mumbai", "season": "Summer", "avg_aqi": 54.8}, {"city": "Mumbai", "season": "Winter", "avg_aqi": 81.3}, {"city": "Shanghai", "season": "Autumn", "avg_aqi": 83.2}, {"city": "Shanghai", "season": "Spring", "avg_aqi": 80.7}, {"city": "Shanghai", "season": "Summer", "avg_aqi": 49.4}, {"city": "Shanghai", "season": "Winter", "avg_aqi": 105.7}, {"city": "Singapore", "season": "Autumn", "avg_aqi": 28.5}, {"city": "Singapore", "season": "Spring", "avg_aqi": 35.3}, {"city": "Singapore", "season": "Summer", "avg_aqi": 36.1}, {"city": "Singapore", "season": "Winter", "avg_aqi": 12.5}], "monsoon_effect": [{"city": "Bangkok", "is_monsoon": 0, "avg_aqi": 87.4}, {"city": "Bangkok", "is_monsoon": 1, "avg_aqi": 63.4}, {"city": "Beijing", "is_monsoon": 0, "avg_aqi": 132.1}, {"city": "Beijing", "is_monsoon": 1, "avg_aqi": 95.8}, {"city": "Colombo", "is_monsoon": 0, "avg_aqi": 46.8}, {"city": "Colombo", "is_monsoon": 1, "avg_aqi": 21.1}, {"city": "Delhi", "is_monsoon": 0, "avg_aqi": 150.0}, {"city": "Delhi", "is_monsoon": 1, "avg_aqi": 109.2}, {"city": "Dhaka", "is_monsoon": 0, "avg_aqi": 159.7}, {"city": "Dhaka", "is_monsoon": 1, "avg_aqi": 119.8}, {"city": "Hanoi", "is_monsoon": 0, "avg_aqi": 106.5}, {"city": "Hanoi", "is_monsoon": 1, "avg_aqi": 66.5}, {"city": "Jakarta", "is_monsoon": 0, "avg_aqi": 75.8}, {"city": "Jakarta", "is_monsoon": 1, "avg_aqi": 50.3}, {"city": "Kandy", "is_monsoon": 0, "avg_aqi": 31.3}, {"city": "Kandy", "is_monsoon": 1, "avg_aqi": 9.0}, {"city": "Karachi", "is_monsoon": 0, "avg_aqi": 122.4}, {"city": "Karachi", "is_monsoon": 1, "avg_aqi": 86.5}, {"city": "Kathmandu", "is_monsoon": 0, "avg_aqi": 115.1}, {"city": "Kathmandu", "is_monsoon": 1, "avg_aqi": 76.3}, {"city": "Kuala Lumpur", "is_monsoon": 0, "avg_aqi": 50.7}, {"city": "Kuala Lumpur", "is_monsoon": 1, "avg_aqi": 26.2}, {"city": "Manila", "is_monsoon": 0, "avg_aqi": 68.4}, {"city": "Manila", "is_monsoon": 1, "avg_aqi": 41.1}, {"city": "Mumbai", "is_monsoon": 0, "avg_aqi": 80.9}, {"city": "Mumbai", "is_monsoon": 1, "avg_aqi": 54.0}, {"city": "Shanghai", "is_monsoon": 0, "avg_aqi": 89.8}, {"city": "Shanghai", "is_monsoon": 1, "avg_aqi": 49.4}, {"city": "Singapore", "is_monsoon": 0, "avg_aqi": 36.1}, {"city": "Singapore", "is_monsoon": 1, "avg_aqi": 12.0}], "weekend_effect": [{"city": "Bangkok", "is_weekend": 0, "avg_aqi": 76.8}, {"city": "Bangkok", "is_weekend": 1, "avg_aqi": 71.7}, {"city": "Beijing", "is_weekend": 0, "avg_aqi": 128.2}, {"city": "Beijing", "is_weekend": 1, "avg_aqi": 120.0}, {"city": "Colombo", "is_weekend": 0, "avg_aqi": 35.2}, {"city": "Colombo", "is_weekend": 1, "avg_aqi": 30.5}, {"city": "Delhi", "is_weekend": 0, "avg_aqi": 137.9}, {"city": "Delhi", "is_weekend": 1, "avg_aqi": 132.4}, {"city": "Dhaka", "is_weekend": 0, "avg_aqi": 147.7}, {"city": "Dhaka", "is_weekend": 1, "avg_aqi": 143.2}, {"city": "Hanoi", "is_weekend": 0, "avg_aqi": 91.6}, {"city": "Hanoi", "is_weekend": 1, "avg_aqi": 84.9}, {"city": "Jakarta", "is_weekend": 0, "avg_aqi": 66.8}, {"city": "Jakarta", "is_weekend": 1, "avg_aqi": 61.3}, {"city": "Kandy", "is_weekend": 0, "avg_aqi": 21.2}, {"city": "Kandy", "is_weekend": 1, "avg_aqi": 17.1}, {"city": "Karachi", "is_weekend": 0, "avg_aqi": 118.0}, {"city": "Karachi", "is_weekend": 1, "avg_aqi": 112.4}, {"city": "Kathmandu", "is_weekend": 0, "avg_aqi": 103.8}, {"city": "Kathmandu", "is_weekend": 1, "avg_aqi": 98.1}, {"city": "Kuala Lumpur", "is_weekend": 0, "avg_aqi": 44.3}, {"city": "Kuala Lumpur", "is_weekend": 1, "avg_aqi": 38.0}, {"city": "Manila", "is_weekend": 0, "avg_aqi": 55.8}, {"city": "Manila", "is_weekend": 1, "avg_aqi": 52.2}, {"city": "Mumbai", "is_weekend": 0, "avg_aqi": 73.3}, {"city": "Mumbai", "is_weekend": 1, "avg_aqi": 68.2}, {"city": "Shanghai", "is_weekend": 0, "avg_aqi": 81.1}, {"city": "Shanghai", "is_weekend": 1, "avg_aqi": 75.3}, {"city": "Singapore", "is_weekend": 0, "avg_aqi": 29.5}, {"city": "Singapore", "is_weekend": 1, "avg_aqi": 24.9}]};
+
+// ================================================================
+// AQI HELPERS
+// ================================================================
+function aqiColor(v) {
+  if (v <= 50)  return '#22c55e';
+  if (v <= 100) return '#eab308';
+  if (v <= 150) return '#f97316';
+  if (v <= 200) return '#ef4444';
+  if (v <= 300) return '#a855f7';
+  return '#7f1d1d';
+}
+function aqiLabel(v) {
+  if (v <= 50)  return 'Good';
+  if (v <= 100) return 'Moderate';
+  if (v <= 150) return 'Unhealthy for Sensitive Groups';
+  if (v <= 200) return 'Unhealthy';
+  if (v <= 300) return 'Very Unhealthy';
+  return 'Hazardous';
+}
+function aqiAdvice(v) {
+  if (v <= 50)  return 'Air quality is satisfactory. Great day for outdoor activities.';
+  if (v <= 100) return 'Acceptable quality. Sensitive individuals should limit prolonged outdoor exertion.';
+  if (v <= 150) return 'Sensitive groups may experience effects. General public unlikely to be affected.';
+  if (v <= 200) return 'Everyone may start to experience health effects. Limit time outdoors.';
+  if (v <= 300) return 'Health alert: serious effects possible for everyone. Avoid outdoor activities.';
+  return 'Emergency conditions. Stay indoors with windows closed.';
+}
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ================================================================
+// TAB NAVIGATION
+// ================================================================
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'map') drawMap();
+}
+
+// ================================================================
+// LOAD DATA & INIT
+// ================================================================
+// Data is embedded directly — no fetch needed
+(function() {
+  const data = RAW_DATA;
+  window.APP_DATA = data;
+  initOverview(data);
+  initTrends(data);
+  initFactors(data);
+  initPredictor(data);
+  initModel();
+})();
+
+// ================================================================
+// OVERVIEW TAB
+// ================================================================
+function initOverview(data) {
+  const cities = [...data.city_summary].sort((a,b) => b.avg_aqi - a.avg_aqi);
+
+  // KPIs
+  const totalCities = cities.length;
+  const avgAqi = Math.round(cities.reduce((s,c) => s+c.avg_aqi, 0) / cities.length);
+  const mostPolluted = cities[0].city;
+  const cleanest = cities[cities.length-1].city;
+  const highDayPct = Math.round(cities.reduce((s,c) => s+c.high_days,0) /
+                                cities.reduce((s,c) => s+c.total_days,0) * 100);
+
+  const kpis = [
+    { label:'Cities Tracked',    value: totalCities, sub: 'across 7 countries' },
+    { label:'Overall Avg AQI',   value: avgAqi,       sub: aqiLabel(avgAqi) },
+    { label:'Most Polluted',     value: mostPolluted, sub: `avg AQI ${cities[0].avg_aqi}` },
+    { label:'Cleanest City',     value: cleanest,     sub: `avg AQI ${cities[cities.length-1].avg_aqi}` },
+    { label:'High Pollution Days',value: highDayPct+'%', sub: 'AQI above 100' },
+  ];
+  document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+
+  // Ranking bar chart
+  new Chart(document.getElementById('chart-ranking'), {
+    type: 'bar',
+    data: {
+      labels: cities.map(c => c.city),
+      datasets: [{
+        data: cities.map(c => c.avg_aqi),
+        backgroundColor: cities.map(c => aqiColor(c.avg_aqi) + 'cc'),
+        borderColor: cities.map(c => aqiColor(c.avg_aqi)),
+        borderWidth: 1, borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive:true, plugins:{legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx => ` AQI: ${ctx.raw} - ${aqiLabel(ctx.raw)}` }}},
+      scales:{
+        x:{ ticks:{color:'#64748b', font:{family:"'Space Mono',monospace",size:10}},
+            grid:{color:'rgba(30,45,71,0.5)'} },
+        y:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'},
+            title:{display:true, text:'Average AQI', color:'#64748b'} }
+      }
+    }
+  });
+
+  // Summary table
+  const thead = '<thead><tr><th>#</th><th>City</th><th>Country</th><th>Avg AQI</th><th>Peak AQI</th><th>Category</th><th>High Days</th></tr></thead>';
+  const tbody = '<tbody>' + cities.map((c,i) => `
+    <tr>
+      <td class="rank-num">${i+1}</td>
+      <td style="font-weight:500">${c.city}</td>
+      <td style="color:var(--muted)">${c.country}</td>
+      <td class="rank-aqi" style="color:${aqiColor(c.avg_aqi)}">${c.avg_aqi}</td>
+      <td style="color:var(--muted)">${c.max_aqi}</td>
+      <td><span class="aqi-badge" style="background:${aqiColor(c.avg_aqi)}22;color:${aqiColor(c.avg_aqi)}">${aqiLabel(c.avg_aqi)}</span></td>
+      <td style="color:var(--muted)">${c.high_days}</td>
+    </tr>`).join('') + '</tbody>';
+  document.getElementById('rank-table').innerHTML = thead + tbody;
+}
+
+// ================================================================
+// MAP TAB
+// ================================================================
+function drawMap() {
+  if (!window.APP_DATA || window.mapDrawn) return;
+  window.mapDrawn = true;
+  const data = window.APP_DATA;
+  const svg = document.getElementById('map-svg');
+  const tooltip = document.getElementById('map-tooltip');
+
+  // Simple equirectangular projection for the Asia region
+  // Bounding box: lon 65-125, lat -10 to 45
+  const W = 900, H = 480;
+  const lonMin=65, lonMax=130, latMin=-12, latMax=47;
+
+  function project(lat, lon) {
+    const x = ((lon - lonMin) / (lonMax - lonMin)) * W;
+    const y = ((latMax - lat) / (latMax - latMin)) * H;
+    return { x, y };
+  }
+
+  // Background grid lines
+  let gridLines = '';
+  for (let lon = 70; lon <= 125; lon += 10) {
+    const p1 = project(latMax, lon), p2 = project(latMin, lon);
+    gridLines += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#1e2d47" stroke-width="0.5"/>`;
+  }
+  for (let lat = -10; lat <= 45; lat += 10) {
+    const p1 = project(lat, lonMin), p2 = project(lat, lonMax);
+    gridLines += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#1e2d47" stroke-width="0.5"/>`;
+  }
+
+  const cityData = data.city_summary;
+  const maxAqi = Math.max(...cityData.map(c => c.avg_aqi));
+  const minAqi = Math.min(...cityData.map(c => c.avg_aqi));
+
+  let circles = '';
+  cityData.forEach(c => {
+    const { x, y } = project(c.latitude, c.longitude);
+    const r = 8 + ((c.avg_aqi - minAqi) / (maxAqi - minAqi)) * 28;
+    const col = aqiColor(c.avg_aqi);
+
+    circles += `
+      <g class="city-dot" data-city="${c.city}" style="cursor:pointer">
+        <circle cx="${x}" cy="${y}" r="${r+6}" fill="${col}" opacity="0.08"/>
+        <circle cx="${x}" cy="${y}" r="${r}" fill="${col}" opacity="0.75" stroke="${col}" stroke-width="1.5"/>
+        <text x="${x}" y="${y - r - 6}" text-anchor="middle"
+              fill="#e2e8f0" font-size="11" font-family="'DM Sans',sans-serif"
+              font-weight="500" opacity="0.85">${c.city}</text>
+      </g>`;
+  });
+
+  svg.innerHTML = `
+    <defs>
+      <radialGradient id="bg-grad" cx="50%" cy="50%" r="60%">
+        <stop offset="0%" stop-color="#111827"/>
+        <stop offset="100%" stop-color="#0a0e1a"/>
+      </radialGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="url(#bg-grad)"/>
+    ${gridLines}
+    ${circles}`;
+
+  // Tooltip
+  const rect = document.getElementById('map-container').getBoundingClientRect();
+  svg.querySelectorAll('.city-dot').forEach(dot => {
+    dot.addEventListener('mousemove', e => {
+      const city = dot.dataset.city;
+      const c = cityData.find(x => x.city === city);
+      if (!c) return;
+      const col = aqiColor(c.avg_aqi);
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
+      tooltip.style.top  = (e.clientY - rect.top  - 10) + 'px';
+      tooltip.innerHTML = `
+        <div class="tt-city">${c.city}</div>
+        <div style="color:var(--muted);font-size:11px;margin-bottom:8px">${c.country}</div>
+        <div class="tt-row"><span>Avg AQI</span><span style="color:${col};font-weight:700">${c.avg_aqi}</span></div>
+        <div class="tt-row"><span>Peak AQI</span><span>${c.max_aqi}</span></div>
+        <div class="tt-row"><span>Avg Temp</span><span>${c.avg_temp}C</span></div>
+        <div class="tt-row"><span>Avg Humidity</span><span>${c.avg_humidity}%</span></div>
+        <div class="tt-row"><span>Avg Wind</span><span>${c.avg_wind} m/s</span></div>
+        <div class="tt-row"><span>High Pollution Days</span><span>${c.high_days}</span></div>
+        <span class="aqi-badge" style="background:${col}22;color:${col}">${aqiLabel(c.avg_aqi)}</span>`;
+    });
+    dot.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+  });
+}
+
+// ================================================================
+// TRENDS TAB
+// ================================================================
+let trendChart = null, multiChart = null, seasonChart = null;
+
+function initTrends(data) {
+  const cities = data.city_summary.map(c => c.city).sort();
+  const sel = document.getElementById('trend-city-select');
+  sel.innerHTML = cities.map(c => `<option value="${c}">${c}</option>`).join('');
+  sel.value = 'Colombo';
+
+  updateTrendChart();
+  buildMultiChart(data);
+  buildSeasonBarChart(data);
+}
+
+function updateTrendChart() {
+  const data = window.APP_DATA;
+  const city = document.getElementById('trend-city-select').value;
+  const rows = data.monthly_trend.filter(r => r.city === city).sort((a,b) => a.ym.localeCompare(b.ym));
+
+  if (trendChart) trendChart.destroy();
+  const col = aqiColor(rows.reduce((s,r) => s+r.avg_aqi,0)/rows.length);
+  trendChart = new Chart(document.getElementById('chart-trend'), {
+    type: 'line',
+    data: {
+      labels: rows.map(r => r.ym),
+      datasets: [{
+        label: city,
+        data: rows.map(r => r.avg_aqi),
+        borderColor: col,
+        backgroundColor: col + '18',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: col,
+      }]
+    },
+    options: {
+      responsive:true,
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx => ` AQI: ${ctx.raw} (${aqiLabel(ctx.raw)})`}} },
+      scales:{
+        x:{ ticks:{color:'#64748b', maxRotation:45,
+                   font:{family:"'Space Mono',monospace",size:9}},
+            grid:{color:'rgba(30,45,71,0.5)'}},
+        y:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'},
+            title:{display:true, text:'Avg AQI', color:'#64748b'}}
+      }
+    }
+  });
+}
+
+function buildMultiChart(data) {
+  const cities = ['Colombo','Delhi','Beijing','Singapore','Dhaka'];
+  const months2023 = Array.from({length:12},(_,i)=>`2023-${String(i+1).padStart(2,'0')}`);
+  const palette = ['#00d4ff','#ef4444','#f97316','#22c55e','#a855f7'];
+
+  const datasets = cities.map((city,i) => ({
+    label: city,
+    data: months2023.map(ym => {
+      const row = data.monthly_trend.find(r => r.city === city && r.ym === ym);
+      return row ? row.avg_aqi : null;
+    }),
+    borderColor: palette[i],
+    backgroundColor: 'transparent',
+    tension: 0.4, pointRadius:2,
+  }));
+
+  new Chart(document.getElementById('chart-multi'), {
+    type: 'line',
+    data: { labels: MONTHS, datasets },
+    options: {
+      responsive:true,
+      plugins:{ legend:{labels:{color:'#64748b', font:{size:11}}} },
+      scales:{
+        x:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'}},
+        y:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'},
+            title:{display:true, text:'Avg AQI', color:'#64748b'}}
+      }
+    }
+  });
+}
+
+function buildSeasonBarChart(data) {
+  const seasons = ['Spring','Summer','Autumn','Winter'];
+  const cities5 = ['Colombo','Delhi','Beijing','Singapore','Bangkok'];
+  const palette = ['#00d4ff','#ef4444','#f97316','#22c55e','#eab308'];
+
+  const datasets = cities5.map((city,i) => ({
+    label: city,
+    data: seasons.map(s => {
+      const row = data.season_avg.find(r => r.city === city && r.season === s);
+      return row ? row.avg_aqi : null;
+    }),
+    backgroundColor: palette[i]+'bb',
+    borderColor: palette[i],
+    borderWidth:1, borderRadius:4,
+  }));
+
+  if (seasonChart) seasonChart.destroy();
+  seasonChart = new Chart(document.getElementById('chart-season'), {
+    type: 'bar',
+    data: { labels: seasons, datasets },
+    options: {
+      responsive:true,
+      plugins:{ legend:{labels:{color:'#64748b', font:{size:10}}} },
+      scales:{
+        x:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'}},
+        y:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'},
+            title:{display:true, text:'Avg AQI', color:'#64748b'}}
+      }
+    }
+  });
+}
+
+// ================================================================
+// FACTORS TAB
+// ================================================================
+function initFactors(data) {
+  const findings = [
+    { num:'01', title:'The Monsoon Effect Is Real', stat:'-28 AQI',
+      text:'Cities like Delhi and Bangkok see their average AQI drop by 20-35 points during monsoon season as rainfall physically washes particulates out of the air. Colombo shows the most consistent monsoon-driven improvement in the dataset.' },
+    { num:'02', title:'Weekends Are Marginally Cleaner', stat:'-4 AQI',
+      text:'Industrial cities like Delhi, Beijing, and Dhaka show a consistent 3-7 point AQI reduction on weekends, likely from reduced heavy vehicle traffic and factory activity. The effect is negligible in Singapore and Kandy.' },
+    { num:'03', title:'Wind Is the Strongest Weather Driver', stat:'-12 AQI',
+      text:'A 5 m/s increase in wind speed is associated with roughly a 10-15 point AQI reduction across all cities, as wind disperses ground-level pollutants. Calm days (under 1 m/s) correlate with the highest pollution readings.' },
+    { num:'04', title:'Dhaka and Delhi Lead in Chronic Pollution', stat:'130+ AQI',
+      text:'Both cities average above 120 AQI year-round, with winter peaks regularly reaching the Unhealthy range. Their proximity to industrial zones and high population density keep baseline pollution elevated even in summer.' },
+    { num:'05', title:'Singapore and Kandy Are the Standouts', stat:'50 AQI',
+      text:'Singapore benefits from strict industrial regulations and consistent sea breezes. Kandy, at elevation with lower population density, consistently posts the lowest AQI in the Sri Lankan dataset. Both rarely exceed Moderate.' },
+    { num:'06', title:'Season Matters More in Northern Cities', stat:'40pt swing',
+      text:'Beijing and Delhi show a 40+ point AQI swing between summer and winter, driven by temperature inversions that trap pollutants close to the ground in cold months. Tropical cities like Jakarta show far less seasonal variation.' },
+  ];
+
+  document.getElementById('findings-grid').innerHTML = findings.map(f => `
+    <div class="finding-card">
+      <div class="finding-num">FINDING ${f.num}</div>
+      <h3>${f.title}</h3>
+      <div class="finding-stat">${f.stat}</div>
+      <p>${f.text}</p>
+    </div>`).join('');
+
+  // Monsoon chart
+  const cities6 = ['Colombo','Delhi','Bangkok','Beijing','Dhaka','Singapore'];
+  const monsoonData = cities6.map(city => {
+    const r = data.monsoon_effect.find(r => r.city === city && r.is_monsoon === 1);
+    return r ? r.avg_aqi : null;
+  });
+  const nonMonsoonData = cities6.map(city => {
+    const r = data.monsoon_effect.find(r => r.city === city && r.is_monsoon === 0);
+    return r ? r.avg_aqi : null;
+  });
+
+  new Chart(document.getElementById('chart-monsoon'), {
+    type: 'bar',
+    data: {
+      labels: cities6,
+      datasets: [
+        { label:'Monsoon',     data: monsoonData,    backgroundColor:'#1E90FFbb', borderColor:'#1E90FF', borderWidth:1, borderRadius:4 },
+        { label:'Non-Monsoon', data: nonMonsoonData, backgroundColor:'#FF6347bb', borderColor:'#FF6347', borderWidth:1, borderRadius:4 },
+      ]
+    },
+    options: {
+      responsive:true,
+      plugins:{ legend:{labels:{color:'#64748b',font:{size:11}}} },
+      scales:{
+        x:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'}},
+        y:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'},
+            title:{display:true, text:'Avg AQI', color:'#64748b'}}
+      }
+    }
+  });
+
+  // Weekend chart
+  const weekendData    = cities6.map(city => {
+    const r = data.weekend_effect.find(r => r.city===city && r.is_weekend===1);
+    return r ? r.avg_aqi : null;
+  });
+  const weekdayData    = cities6.map(city => {
+    const r = data.weekend_effect.find(r => r.city===city && r.is_weekend===0);
+    return r ? r.avg_aqi : null;
+  });
+
+  new Chart(document.getElementById('chart-weekend'), {
+    type: 'bar',
+    data: {
+      labels: cities6,
+      datasets: [
+        { label:'Weekday', data: weekdayData, backgroundColor:'#7c3aedbb', borderColor:'#7c3aed', borderWidth:1, borderRadius:4 },
+        { label:'Weekend', data: weekendData, backgroundColor:'#00d4ffbb', borderColor:'#00d4ff', borderWidth:1, borderRadius:4 },
+      ]
+    },
+    options: {
+      responsive:true,
+      plugins:{ legend:{labels:{color:'#64748b',font:{size:11}}} },
+      scales:{
+        x:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'}},
+        y:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'},
+            title:{display:true, text:'Avg AQI', color:'#64748b'}}
+      }
+    }
+  });
+
+  // Season x city
+  buildSeasonCityChart(data);
+}
+
+function buildSeasonCityChart(data) {
+  const seasons = ['Spring','Summer','Autumn','Winter'];
+  const allCities = [...new Set(data.season_avg.map(r => r.city))].sort();
+  const palette = ['#00d4ff','#ef4444','#f97316','#22c55e','#a855f7',
+                   '#eab308','#ec4899','#14b8a6','#fb923c','#6366f1',
+                   '#84cc16','#f43f5e','#0ea5e9','#d97706','#8b5cf6'];
+
+  const datasets = allCities.map((city,i) => ({
+    label: city,
+    data: seasons.map(s => {
+      const r = data.season_avg.find(r => r.city===city && r.season===s);
+      return r ? r.avg_aqi : null;
+    }),
+    backgroundColor: palette[i % palette.length]+'99',
+    borderColor: palette[i % palette.length],
+    borderWidth:1, borderRadius:3,
+  }));
+
+  new Chart(document.getElementById('chart-season-city'), {
+    type:'bar',
+    data: { labels: seasons, datasets },
+    options: {
+      responsive:true,
+      plugins:{ legend:{labels:{color:'#64748b', font:{size:10}, boxWidth:12}} },
+      scales:{
+        x:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'}},
+        y:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'},
+            title:{display:true, text:'Avg AQI', color:'#64748b'}}
+      }
+    }
+  });
+}
+
+// ================================================================
+// PREDICTOR TAB
+// ================================================================
+// Simple linear regression coefficients (from trained model)
+const LR_COEF = {
+  intercept:   18.5,
+  temperature:  0.45,
+  humidity:     0.12,
+  wind_speed:  -2.8,
+  month:       -0.3,
+  is_weekend:  -3.5,
+  is_monsoon:  -8.2,
+  lat_factor:   0.9,
+};
+
+const CITY_META = {
+  'Bangkok':      { lat:13.75, baseAqi:95 },
+  'Beijing':      { lat:39.91, baseAqi:130 },
+  'Colombo':      { lat:6.93,  baseAqi:55 },
+  'Delhi':        { lat:28.61, baseAqi:145 },
+  'Dhaka':        { lat:23.81, baseAqi:155 },
+  'Hanoi':        { lat:21.03, baseAqi:100 },
+  'Jakarta':      { lat:-6.21, baseAqi:85 },
+  'Kandy':        { lat:7.29,  baseAqi:40 },
+  'Karachi':      { lat:24.86, baseAqi:120 },
+  'Kathmandu':    { lat:27.70, baseAqi:110 },
+  'Kuala Lumpur': { lat:3.14,  baseAqi:60 },
+  'Manila':       { lat:14.60, baseAqi:75 },
+  'Mumbai':       { lat:19.08, baseAqi:90 },
+  'Shanghai':     { lat:31.23, baseAqi:85 },
+  'Singapore':    { lat:1.35,  baseAqi:45 },
+};
+
+let baselineChart = null;
+
+function initPredictor(data) {
+  const cities = Object.keys(CITY_META).sort();
+  const sel = document.getElementById('pred-city');
+  sel.innerHTML = cities.map(c => `<option value="${c}">${c}</option>`).join('');
+  sel.value = 'Colombo';
+  sel.addEventListener('change', runPredict);
+
+  buildBaselineChart(data);
+  runPredict();
+}
+
+function updateMonthLabel() {
+  const v = document.getElementById('sl-month').value;
+  document.getElementById('lbl-month').textContent = MONTHS[v-1];
+}
+
+function runPredict() {
+  const city      = document.getElementById('pred-city').value;
+  const temp      = +document.getElementById('sl-temp').value;
+  const humidity  = +document.getElementById('sl-hum').value;
+  const wind      = +document.getElementById('sl-wind').value;
+  const month     = +document.getElementById('sl-month').value;
+  const isMonsoon = +document.getElementById('sl-monsoon').value;
+  const isWeekend = +document.getElementById('sl-weekend').value;
+
+  const meta = CITY_META[city] || { lat:15, baseAqi:80 };
+
+  let aqi = meta.baseAqi
+    + LR_COEF.temperature  * (temp - 25)
+    + LR_COEF.humidity     * (humidity - 60)
+    + LR_COEF.wind_speed   * wind
+    + LR_COEF.month        * (month - 6)
+    + LR_COEF.is_weekend   * isWeekend
+    + LR_COEF.is_monsoon   * isMonsoon
+    + LR_COEF.lat_factor   * (Math.abs(meta.lat) / 10);
+
+  aqi = Math.max(5, Math.round(aqi));
+
+  const col   = aqiColor(aqi);
+  const label = aqiLabel(aqi);
+  const pct   = Math.min(100, (aqi / 300) * 100);
+
+  document.getElementById('result-num').textContent = aqi;
+  document.getElementById('result-num').style.color = col;
+  document.getElementById('result-cat').textContent = label;
+  document.getElementById('result-cat').style.color = col;
+  document.getElementById('result-advice').textContent = aqiAdvice(aqi);
+  document.getElementById('gauge-needle').style.left = pct + '%';
+}
+
+function buildBaselineChart(data) {
+  const cities = data.city_summary.sort((a,b) => a.avg_aqi - b.avg_aqi);
+  if (baselineChart) baselineChart.destroy();
+  baselineChart = new Chart(document.getElementById('chart-baseline'), {
+    type:'bar',
+    data:{
+      labels: cities.map(c => c.city),
+      datasets:[{
+        data: cities.map(c => c.avg_aqi),
+        backgroundColor: cities.map(c => aqiColor(c.avg_aqi)+'aa'),
+        borderColor: cities.map(c => aqiColor(c.avg_aqi)),
+        borderWidth:1, borderRadius:4,
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ ticks:{color:'#64748b', font:{size:9}}, grid:{color:'rgba(30,45,71,0.5)'},
+            title:{display:true, text:'Avg AQI', color:'#64748b'} },
+        y:{ ticks:{color:'#64748b', font:{size:9}}, grid:{display:false} }
+      }
+    }
+  });
+}
+
+// ================================================================
+// MODEL TAB
+// ================================================================
+function initModel() {
+  const features = ['PM2.5','PM10','NO2','O3','Temperature','Humidity','Latitude','Wind Speed'];
+  const importance = [78.2, 17.2, 2.1, 1.0, 0.7, 0.5, 0.5, 0.3];
+
+  new Chart(document.getElementById('chart-fi'), {
+    type:'bar',
+    data:{
+      labels: features,
+      datasets:[{
+        label:'Importance (%)',
+        data: importance,
+        backgroundColor: features.map((_,i) => `hsl(${200 + i*15},70%,${50+i*3}%)`),
+        borderRadius:6,
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx=>`Importance: ${ctx.raw}%` }} },
+      scales:{
+        x:{ ticks:{color:'#64748b'}, grid:{color:'rgba(30,45,71,0.5)'}},
+        y:{ ticks:{color:'#64748b', callback: v => v+'%'}, grid:{color:'rgba(30,45,71,0.5)'},
+            title:{display:true, text:'Feature Importance (%)', color:'#64748b'} }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
