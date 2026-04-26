@@ -570,7 +570,7 @@
 <body>
 
 <header>
-  <div class="header-tag">Data Science Portfolio</div>
+
   <h1>Can We Predict and Explain<br><span>Air Quality in Cities?</span></h1>
   <p>An interactive analysis of 15 cities across Sri Lanka and Asia, covering 3 years of daily air quality data, factor analysis, and a machine learning model that predicts AQI from weather conditions.</p>
   <div class="author-badge">
@@ -889,12 +889,23 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 // ================================================================
 // TAB NAVIGATION
 // ================================================================
+const tabsInitialised = {};
+
 function showTab(id) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
   event.currentTarget.classList.add('active');
-  if (id === 'map') drawMap();
+
+  if (!tabsInitialised[id] && window.APP_DATA) {
+    tabsInitialised[id] = true;
+    const data = window.APP_DATA;
+    if (id === 'map')       drawMap();
+    if (id === 'trends')    initTrends(data);
+    if (id === 'factors')   initFactors(data);
+    if (id === 'predictor') initPredictor(data);
+    if (id === 'model')     initModel();
+  }
 }
 
 // ================================================================
@@ -904,11 +915,10 @@ function showTab(id) {
 (function() {
   const data = RAW_DATA;
   window.APP_DATA = data;
+  // Only init the visible tab (overview) on load
+  // All other tabs init lazily when first clicked
   initOverview(data);
-  initTrends(data);
-  initFactors(data);
-  initPredictor(data);
-  initModel();
+  tabsInitialised['overview'] = true;
 })();
 
 // ================================================================
@@ -1213,11 +1223,11 @@ function initFactors(data) {
   // Monsoon chart
   const cities6 = ['Colombo','Delhi','Bangkok','Beijing','Dhaka','Singapore'];
   const monsoonData = cities6.map(city => {
-    const r = data.monsoon_effect.find(r => r.city === city && r.is_monsoon === 1);
+    const r = data.monsoon_effect.find(r => r.city === city && r.is_monsoon == 1);
     return r ? r.avg_aqi : null;
   });
   const nonMonsoonData = cities6.map(city => {
-    const r = data.monsoon_effect.find(r => r.city === city && r.is_monsoon === 0);
+    const r = data.monsoon_effect.find(r => r.city === city && r.is_monsoon == 0);
     return r ? r.avg_aqi : null;
   });
 
@@ -1243,11 +1253,11 @@ function initFactors(data) {
 
   // Weekend chart
   const weekendData    = cities6.map(city => {
-    const r = data.weekend_effect.find(r => r.city===city && r.is_weekend===1);
+    const r = data.weekend_effect.find(r => r.city===city && r.is_weekend==1);
     return r ? r.avg_aqi : null;
   });
   const weekdayData    = cities6.map(city => {
-    const r = data.weekend_effect.find(r => r.city===city && r.is_weekend===0);
+    const r = data.weekend_effect.find(r => r.city===city && r.is_weekend==0);
     return r ? r.avg_aqi : null;
   });
 
