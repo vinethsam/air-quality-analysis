@@ -1,6 +1,6 @@
 # Can We Predict and Explain Air Quality in Cities?
 
-An interactive data science dashboard exploring air quality across Sri Lanka and major Asian cities. Covers 15 cities, 3 years of daily data, factor analysis, and a live AQI predictor.
+An interactive dashboard exploring air quality across Sri Lanka and major Asian cities. Covers 15 cities, 3 years of daily data, factor analysis, and a live AQI predictor.
 
 **Author:** Vineth Samarasinghe
 **Live Dashboard:** https://vinethsam.github.io/air-quality-analysis
@@ -10,7 +10,7 @@ An interactive data science dashboard exploring air quality across Sri Lanka and
 
 ## View It Live
 
-No setup needed. Just open the link above. The dashboard runs entirely in the browser.
+No setup needed. The dashboard runs entirely in the browser.
 
 ---
 
@@ -72,8 +72,6 @@ git clone https://github.com/vinethsam/air-quality-analysis.git
 cd air-quality-analysis
 # Open index.html in any browser
 ```
-
-That is it. No npm, no Python, no server required.
 
 ---
 
